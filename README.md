@@ -1,2 +1,0 @@
-# Bekir
-Ytm
