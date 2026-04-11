@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Gelişmiş Maliyet Yönetimi</title>
+    <style>
+        :root { --p: #2563eb; --s: #10b981; --bg: #f8fafc; --err: #ef4444; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; }
+        .container { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 380px 1fr; gap: 25px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        h3 { border-left: 5px solid var(--p); padding-left: 12px; margin-top: 0; font-size: 18px; margin-bottom: 20px; color: #0f172a; }
+        
+        .row { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; transition: all 0.3s; }
+        .active-row { border: 2px solid var(--p) !important; background: #f0f7ff; transform: scale(1.01); }
+        
+        /* Gruplandırma Stilleri */
+        .product-group-container { border: 2px dashed #cbd5e1; padding: 15px; border-radius: 12px; margin-bottom: 25px; background: #f1f5f9; }
+        .group-title { background: var(--p); color: white; padding: 6px 15px; border-radius: 20px; font-size: 13px; font-weight: bold; display: inline-block; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+
+        label { font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; }
+        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: #fff; }
+        input:focus { border-color: var(--p); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); }
+        
+        .builder-area { position: sticky; top: 20px; background: #ffffff; border: 2px solid #cbd5e1; padding: 20px; border-radius: 15px; margin-top: 15px; }
+        .tag-group { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag-group label { width: 100%; color: var(--p); margin-bottom: 8px; }
+        
+        .tag { background: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #cbd5e1; font-weight: 600; min-width: 35px; text-align: center; transition: 0.2s; user-select: none; }
+        .tag:hover { background: var(--p); color: white; transform: translateY(-2px); }
+        .tag.op { background: #fee2e2; color: #be123c; border-color: #fecaca; font-size: 18px; }
+        .tag.num { background: white; }
+        .tag.special { background: #dcfce7; color: #166534; width: 100%; margin-top: 10px; font-size: 14px; }
+        
+        .btn { padding: 12px; border-radius: 10px; cursor: pointer; font-weight: bold; border: none; transition: 0.3s; }
+        .btn-add { background: var(--p); color: white; width: 100%; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
+        .btn-save { background: var(--err); color: white; padding: 18px 80px; font-size: 18px; margin: 40px auto; display: block; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }
+        .btn-del { background: #fee2e2; color: var(--err); font-size: 13px; margin-top: 10px; align-self: flex-end; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h3>1. Ham Madde Fiyat Listesi</h3>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">⚠️ Fiyatlar 100 cm (1 Metre) üzerinden girilmelidir.</p>
+        <div id="material-list"></div>
+        <button class="btn btn-add" onclick="ekle('material')">✚ Yeni Malzeme Ekle</button>
+    </div>
+
+    <div class="card">
+        <h3>2. Ürün Bazlı Formül Grupları</h3>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">Formüller ana sayfadaki ürün ismine göre otomatik gruplandırılır.</p>
+        <div id="formula-list"></div>
+        <button class="btn btn-add" style="background: var(--s);" onclick="ekle('formula')">✚ Yeni Formül Kalemi Ekle</button>
+
+        <div class="builder-area" id="builder-box" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <span style="font-weight:bold; color:var(--p); letter-spacing: 1px;">⚙️ FORMÜL SİHİRBAZI</span>
+                <button class="btn" style="background:#64748b; color:white; font-size:11px; padding:5px 10px;" onclick="if(activeInput) activeInput.value=''">Tümünü Temizle</button>
+            </div>
+            
+            <div class="tag-group">
+                <label>Rakamlar</label>
+                <div class="tag num" onclick="addTag('1')">1</div><div class="tag num" onclick="addTag('2')">2</div><div class="tag num" onclick="addTag('3')">3</div>
+                <div class="tag num" onclick="addTag('4')">4</div><div class="tag num" onclick="addTag('5')">5</div><div class="tag num" onclick="addTag('6')">6</div>
+                <div class="tag num" onclick="addTag('7')">7</div><div class="tag num" onclick="addTag('8')">8</div><div class="tag num" onclick="addTag('9')">9</div>
+                <div class="tag num" onclick="addTag('0')">0</div><div class="tag num" onclick="addTag('.')">.</div>
+            </div>
+
+            <div class="tag-group">
+                <label>Matematik</label>
+                <div class="tag op" onclick="addTag('*')">×</div><div class="tag op" onclick="addTag('/')">÷</div>
+                <div class="tag op" onclick="addTag('+')">+</div><div class="tag op" onclick="addTag('-')">-</div>
+                <div class="tag op" onclick="addTag('(')">(</div><div class="tag op" onclick="addTag(')')">)</div>
+            </div>
+
+            <div class="tag-group">
+                <label>Tablo Değişkenleri (En, Boy vb.)</label>
+                <div id="col-tags"></div>
+            </div>
+
+            <div class="tag-group">
+                <label>Birim Fiyat</label>
+                <div class="tag special" onclick="addTag('[HamFiyat]')">💎 SEÇİLEN MALZEMENİN CM FİYATINI EKLE</div>
+            </div>
+            <p style="font-size: 11px; color: #64748b;">💡 <b>İpucu:</b> Formül kutusuna tıklayıp klavyenizle el ile silme/düzenleme yapabilirsiniz.</p>
+        </div>
+    </div>
+</div>
+
+<button class="btn btn-save" onclick="kaydet()">💾 TÜM YAPILANDIRMAYI SİSTEME KAYDET</button>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDO7123Lo08OrESb9Fg5xO3XK25VPNnN0w",
+        authDomain: "teklifverme-b4a4d.firebaseapp.com",
+        projectId: "teklifverme-b4a4d",
+        databaseURL: "https://teklifverme-b4a4d-default-rtdb.firebaseio.com",
+        appId: "1:36396750279:web:94e26c312a0b89825335e2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    let activeInput = null;
+    let materialsCache = []; 
+    let productOptions = [];
+
+    onValue(ref(db, 'form_tasarimi'), (s) => {
+        const config = s.val();
+        if(config?.table) {
+            document.getElementById('col-tags').innerHTML = config.table
+                .map(col => `<div class="tag" onclick="addTag('[${col.name}]')">${col.name}</div>`).join('');
+            
+            const urunCol = config.table.find(c => c.name.toLowerCase().includes('ürün') || c.name.toLowerCase().includes('model'));
+            productOptions = urunCol?.options || [];
+        }
+    });
+
+    onValue(ref(db, 'maliyet_ayarlari'), (s) => {
+        const d = s.val();
+        if(d) {
+            materialsCache = d.materials || [];
+            document.getElementById('material-list').innerHTML = "";
+            document.getElementById('formula-list').innerHTML = "";
+            
+            materialsCache.forEach(m => ekle('material', m));
+
+            // GRUPLANDIRMA MANTIĞI
+            if(d.formulas && d.formulas.length > 0) {
+                const groups = {};
+                // Önce veriyi ürün adına göre grupla
+                d.formulas.forEach(f => {
+                    const pName = f.product || "Tanımsız Ürün";
+                    if(!groups[pName]) groups[pName] = [];
+                    groups[pName].push(f);
+                });
+
+                // Gruplanmış veriyi ekrana bas
+                Object.keys(groups).forEach(pName => {
+                    const groupWrapper = document.createElement('div');
+                    groupWrapper.className = 'product-group-container';
+                    groupWrapper.innerHTML = `<div class="group-title">📦 ${pName}</div>`;
+                    document.getElementById('formula-list').appendChild(groupWrapper);
+                    
+                    groups[pName].forEach(f => {
+                        ekle('formula', f, groupWrapper);
+                    });
+                });
+            }
+        }
+    }, { onlyOnce: true });
+
+    window.ekle = (type, data = null, targetContainer = null) => {
+        const container = targetContainer || document.getElementById(type + '-list');
+        const div = document.createElement('div');
+        div.className = 'row';
+        
+        if(type === 'material') {
+            div.innerHTML = `
+                <label>Ham Madde Adı</label>
+                <input type="text" class="m-name" value="${data?data.name:''}" placeholder="Örn: Beyaz Profil">
+                <label>100cm Fiyatı (TL)</label>
+                <input type="number" step="0.01" class="m-price" value="${data?data.price:''}" placeholder="250.00">
+                <button class="btn btn-del" onclick="this.parentElement.remove()">Kaldır</button>`;
+        } else {
+            document.getElementById('builder-box').style.display = 'block';
+            let pOpts = productOptions.map(p => `<option value="${p}" ${data?.product===p?'selected':''}>${p}</option>`).join('');
+            let mOpts = materialsCache.map(m => `<option value="${m.name}" ${data?.selectedMaterial===m.name?'selected':''}>${m.name}</option>`).join('');
+
+            div.innerHTML = `
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div><label>Anasayfa Ürünü</label>
+                        <select class="f-product"><option value="">Seç...</option>${pOpts}</select></div>
+                    <div><label>İlgili Ham Madde</label>
+                        <select class="f-mat-link"><option value="">Seç...</option>${mOpts}</select></div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label>Maliyet Kalemi Adı</label>
+                    <input type="text" class="f-desc" value="${data?.desc || ''}" placeholder="Örn: Tül Maliyeti" style="width:96%;">
+                </div>
+                <div style="margin-top:10px;">
+                    <label>Hesaplama Formülü</label>
+                    <input type="text" class="f-logic" value="${data?data.logic:''}" onfocus="setActive(this)" style="width:96%; font-family:monospace; color:var(--p); font-weight:bold;">
+                </div>
+                <button class="btn btn-del" onclick="this.parentElement.remove()">Bu Kalemi Sil</button>`;
+            setActive(div.querySelector('.f-logic'));
+        }
+        container.appendChild(div);
+    };
+
+    window.setActive = (el) => {
+        activeInput = el;
+        document.querySelectorAll('.row').forEach(r => r.classList.remove('active-row'));
+        el.closest('.row').classList.add('active-row');
+    };
+
+    window.addTag = (val) => { 
+        if(activeInput) {
+            const start = activeInput.selectionStart;
+            const end = activeInput.selectionEnd;
+            const text = activeInput.value;
+            activeInput.value = text.substring(0, start) + val + text.substring(end);
+            activeInput.focus();
+            const newPos = start + val.length;
+            activeInput.setSelectionRange(newPos, newPos);
+        } 
+    };
+
+    window.kaydet = () => {
+        const materials = Array.from(document.querySelectorAll('#material-list .row')).map(r => ({
+            name: r.querySelector('.m-name').value.trim(),
+            price: r.querySelector('.m-price').value
+        })).filter(m => m.name !== "");
+
+        const formulas = Array.from(document.querySelectorAll('#formula-list .row')).map(r => ({
+            product: r.querySelector('.f-product').value,
+            selectedMaterial: r.querySelector('.f-mat-link').value,
+            desc: r.querySelector('.f-desc').value.trim(),
+            logic: r.querySelector('.f-logic').value
+        })).filter(f => f.product !== "" && f.logic !== "");
+
+        set(ref(db, 'maliyet_ayarlari'), { materials, formulas }).then(() => {
+            alert("✅ Veriler Başarıyla Gruplandırıldı ve Kaydedildi!");
+            materialsCache = materials;
+            location.reload();
+        }).catch(err => alert("Hata: " + err.message));
+    };
+</script>
+</body>
+</html>
