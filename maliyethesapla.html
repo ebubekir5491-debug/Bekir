@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Reçete Master v2 - Koşul Bazlı Formül</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tag { @apply px-2 py-0.5 rounded text-[10px] font-bold border cursor-pointer hover:bg-red-50; }
+        .formula-tag { @apply bg-indigo-50 text-indigo-600 border-indigo-200; }
+        .operator-tag { @apply bg-amber-50 text-amber-600 border-amber-200; }
+        .number-tag { @apply bg-emerald-50 text-emerald-600 border-emerald-200; }
+        input, select { @apply bg-transparent outline-none text-center w-full; }
+        th { @apply text-[10px] uppercase bg-slate-50 text-slate-500 p-2 border font-black; }
+        td { @apply border p-1 text-sm vertical-align-top; }
+        .condition-card { @apply flex flex-col gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm mb-2; }
+    </style>
+</head>
+<body class="bg-slate-100 p-2 md:p-6 font-sans">
+
+    <div class="max-w-full mx-auto bg-white shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+        <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-black tracking-tighter">⚙️ REÇETE YAPILANDIRMA</h1>
+                <p class="text-[9px] text-slate-400 uppercase tracking-widest">Koşul Bağımsız Formül Yönetimi</p>
+            </div>
+            <button onclick="saveReçete()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95">SİSTEME YÜKLE</button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr>
+                        <th width="40">#</th>
+                        <th>MALZEME ADI</th>
+                        <th width="100">BİRİM</th>
+                        <th width="100">B.FİYAT</th>
+                        <th width="600">KOŞULLAR VE ÖZEL FORMÜLLER</th>
+                        <th width="40"></th>
+                    </tr>
+                </thead>
+                <tbody id="recipe-body" class="bg-white"></tbody>
+            </table>
+        </div>
+        <button onclick="addRow()" class="m-4 text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors">+ YENİ MALZEME EKLE</button>
+    </div>
+
+    <div id="selector-modal" class="fixed inset-0 bg-slate-900/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-3xl max-w-lg w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-6 border-b pb-2">
+                <h3 class="font-black text-slate-800 uppercase text-sm italic">Formül Bileşeni Seç</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-red-500 font-bold">✕</button>
+            </div>
+            <div class="space-y-6">
+                <div id="header-zone" class="flex flex-wrap gap-2"></div>
+                <div class="bg-slate-50 p-3 rounded-xl flex gap-2 items-center">
+                    <input type="number" id="manual-number" class="w-full bg-white border p-2 rounded-lg font-bold text-sm" placeholder="Sabit Sayı...">
+                    <button onclick="addToken('number', document.getElementById('manual-number').value)" class="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase">EKLE</button>
+                </div>
+                <div id="operators-zone" class="grid grid-cols-5 gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c",
+            storageBucket: "adasineklik54-4c11c.firebasestorage.app",
+            messagingSenderId: "416407042534",
+            appId: "1:416407042534:web:8105a2ac5f87477eff7e27"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let activeFormulaContainer = null;
+        let formConfig = null;
+
+        window.onload = async () => {
+            const configSnap = await get(ref(db, 'ayarlar/form_duzeni'));
+            if(configSnap.exists()) formConfig = configSnap.val();
+
+            const recipeSnap = await get(ref(db, 'receteler'));
+            if(recipeSnap.exists()) {
+                const data = recipeSnap.val();
+                Object.values(data).forEach(r => addRow(r));
+            } else { addRow(); }
+            setupModalButtons();
+        };
+
+        function setupModalButtons() {
+            const ops = ['+', '-', '*', '/', '(', ')', '.', '100', '10000'];
+            document.getElementById('operators-zone').innerHTML = ops.map(op => `
+                <button onclick="addToken('operator', '${op}')" class="bg-slate-100 hover:bg-amber-100 p-3 rounded-xl font-black text-slate-700 transition-colors border border-slate-200">${op}</button>
+            `).join('');
+        }
+
+        window.addRow = function(data = {}) {
+            const body = document.getElementById('recipe-body');
+            const rowNo = body.rows.length + 1;
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td class="text-center font-bold text-slate-300 pt-4">${rowNo}</td>
+                <td><input type="text" class="item-name text-left px-2 font-bold pt-4" value="${data.ad || ''}" placeholder="Malzeme Adı..."></td>
+                <td>
+                    <select class="item-unit text-[10px] font-bold text-slate-500 pt-4">
+                        <option value="ADET" ${data.birim === 'ADET' ? 'selected' : ''}>ADET</option>
+                        <option value="MT" ${data.birim === 'MT' ? 'selected' : ''}>METRE</option>
+                        <option value="M2" ${data.birim === 'M2' ? 'selected' : ''}>M2</option>
+                    </select>
+                </td>
+                <td><input type="number" class="item-price text-indigo-600 font-black pt-4" value="${data.birimFiyat || ''}" placeholder="0"></td>
+                <td class="p-2 bg-slate-50/30">
+                    <div class="condition-list"></div>
+                    <button onclick="addConditionRow(this)" class="text-[10px] font-black text-indigo-600 mt-2 bg-white px-3 py-1 rounded-full border shadow-sm">+ YENİ KOŞUL & FORMÜL EKLE</button>
+                </td>
+                <td class="text-center pt-4"><button onclick="this.closest('tr').remove()" class="text-slate-300 hover:text-red-500">✕</button></td>
+            `;
+            body.appendChild(tr);
+
+            const listContainer = tr.querySelector('.condition-list');
+            if(data.kosulGruplari && data.kosulGruplari.length > 0) {
+                data.kosulGruplari.forEach(kg => addConditionRow(tr.querySelector('button'), kg));
+            } else {
+                addConditionRow(tr.querySelector('button'));
+            }
+        };
+
+        window.addConditionRow = function(btn, existingData = null) {
+            const container = btn.parentElement.querySelector('.condition-list');
+            const div = document.createElement('div');
+            div.className = "condition-card";
+            div.innerHTML = `
+                <div class="flex gap-2 items-center border-b border-slate-100 pb-2">
+                    <select class="tag-header text-[10px] font-bold w-1/3 border rounded bg-slate-50 p-1" onchange="updateTagValues(this)">
+                        <option value="">KOŞUL SEÇ...</option>
+                        ${formConfig.columns.map(c => `<option value="${c.name}" ${existingData?.baslik === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                    <select class="tag-value text-[10px] font-black text-red-500 w-1/3 border rounded bg-slate-50 p-1">
+                        <option value="">DEĞER...</option>
+                    </select>
+                    <button onclick="this.closest('.condition-card').remove()" class="ml-auto text-slate-300 hover:text-red-500">✕</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] font-black text-slate-400 uppercase w-12">Formül:</span>
+                    <div class="flex-1 flex items-center gap-2 bg-slate-100/50 p-1 rounded-lg min-h-[34px]">
+                        <div class="formula-tokens flex flex-wrap gap-1">
+                            ${(existingData?.tokens || []).map(t => `<span class="tag ${t.type}-tag" data-val="${t.val}" onclick="this.remove()">${t.val}</span>`).join('')}
+                        </div>
+                        <button onclick="openSelector(this)" class="ml-auto bg-white text-indigo-600 w-6 h-6 rounded shadow-sm border font-bold">+</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            updateTagValues(div.querySelector('.tag-header'), existingData?.deger);
+        };
+
+        window.updateTagValues = function(selectEl, selectedVal = null) {
+            const valSelect = selectEl.nextElementSibling;
+            const column = formConfig.columns.find(c => c.name === selectEl.value);
+            valSelect.innerHTML = column?.type === 'select' 
+                ? column.options.split(',').map(o => `<option value="${o.trim()}" ${selectedVal === o.trim() ? 'selected' : ''}>${o.trim()}</option>`).join('')
+                : '<option value="ANY">TÜMÜ (DOLU)</option>';
+        };
+
+        window.openSelector = function(btn) {
+            activeFormulaContainer = btn.previousElementSibling;
+            document.getElementById('header-zone').innerHTML = formConfig.columns.map(col => `
+                <button onclick="addToken('formula', '${col.name}')" class="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm">${col.name}</button>
+            `).join('');
+            document.getElementById('selector-modal').classList.remove('hidden');
+        };
+
+        window.addToken = function(type, val) {
+            if(!val) return;
+            const span = document.createElement('span');
+            span.className = `tag ${type}-tag`;
+            span.dataset.val = val;
+            span.innerText = val;
+            span.onclick = function() { this.remove(); };
+            activeFormulaContainer.appendChild(span);
+            document.getElementById('selector-modal').classList.add('hidden');
+            document.getElementById('manual-number').value = "";
+        };
+
+        window.closeModal = () => document.getElementById('selector-modal').classList.add('hidden');
+
+        window.saveReçete = async function() {
+            const rows = Array.from(document.querySelectorAll('#recipe-body tr')).map(tr => ({
+                ad: tr.querySelector('.item-name').value,
+                birim: tr.querySelector('.item-unit').value,
+                birimFiyat: tr.querySelector('.item-price').value,
+                kosulGruplari: Array.from(tr.querySelectorAll('.condition-card')).map(card => ({
+                    baslik: card.querySelector('.tag-header').value,
+                    deger: card.querySelector('.tag-value').value,
+                    tokens: Array.from(card.querySelectorAll('.formula-tokens span')).map(s => ({
+                        type: Array.from(s.classList).find(c => c.endsWith('-tag')).replace('-tag', ''),
+                        val: s.dataset.val
+                    }))
+                })).filter(kg => kg.baslik)
+            })).filter(r => r.ad);
+
+            try {
+                await set(ref(db, 'receteler'), JSON.parse(JSON.stringify(rows)));
+                alert("Başarıyla Kaydedildi!");
+            } catch (e) { alert("Hata: " + e.message); }
+        };
+    </script>
+</body>
+</html>

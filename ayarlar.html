@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistem Ayarları - Sürükle Bırak Destekli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        /* Sürükleme sırasında görünecek stil */
+        .sortable-ghost { opacity: 0.4; border: 2px dashed #4f46e5 !important; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-10">
+    <div class="max-w-5xl mx-auto bg-white shadow-xl rounded-2xl p-8">
+        <h1 class="text-2xl font-black mb-8 border-b pb-4">⚙️ FORM YAPILANDIRMA</h1>
+        
+        <form id="settings-form" class="space-y-8">
+            <section class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-6 rounded-xl border">
+                <div>
+                    <label class="block text-xs font-bold mb-1 uppercase">Form Başlığı</label>
+                    <input type="text" id="mainTitle" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 uppercase">Renk</label>
+                    <input type="color" id="accentColor" class="w-full h-10 rounded">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 uppercase">Yazı (px)</label>
+                    <input type="number" id="baseFontSize" class="w-full border p-2 rounded" value="14">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 uppercase">NO Genişlik (mm)</label>
+                    <input type="number" id="noColumnWidth" class="w-full border p-2 rounded" value="12">
+                </div>
+            </section>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold uppercase tracking-widest text-slate-500">Sütunlar (Sürükleyerek Sıralayın)</h2>
+                    <button type="button" onclick="addColumnRow()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">+ Sütun Ekle</button>
+                </div>
+                <div id="columns-container" class="space-y-3"></div>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-emerald-700 transition-all uppercase tracking-widest">Yapılandırmayı Kaydet</button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c",
+            storageBucket: "adasineklik54-4c11c.firebasestorage.app",
+            messagingSenderId: "416407042534",
+            appId: "1:416407042534:web:8105a2ac5f87477eff7e27"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Sıralama özelliğini aktif et
+        const el = document.getElementById('columns-container');
+        Sortable.create(el, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            handle: '.drag-handle' // Sadece ikon üzerinden tutunca sürüklensin
+        });
+
+        window.addColumnRow = function(data = {}) {
+            const container = document.getElementById('columns-container');
+            const div = document.createElement('div');
+            div.className = "card bg-white border p-4 rounded-lg shadow-sm flex flex-wrap gap-4 relative items-end";
+            div.innerHTML = `
+                <div class="drag-handle bg-slate-100 p-2 rounded border cursor-grab self-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9h8M8 15h8"/></svg>
+                </div>
+
+                <div class="flex-1 min-w-[150px]">
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Sütun Adı</label>
+                    <input type="text" class="col-name border-b w-full p-1 font-bold" value="${data.name || ''}" placeholder="Örn: Genişlik">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Tip</label>
+                    <select class="col-type border-b p-1">
+                        <option value="text" ${data.type==='text'?'selected':''}>Metin</option>
+                        <option value="number" ${data.type==='number'?'selected':''}>Sayı</option>
+                        <option value="select" ${data.type==='select'?'selected':''}>Liste</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Genişlik %</label>
+                    <input type="number" class="col-width border-b p-1 w-16" value="${data.width || '20'}">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase text-blue-600">Hizalama</label>
+                    <select class="col-align border-b p-1 font-bold text-blue-600">
+                        <option value="left" ${data.align==='left'?'selected':''}>⬅ Sol</option>
+                        <option value="center" ${data.align==='center'?'selected':''}>↔ Orta</option>
+                        <option value="right" ${data.align==='right'?'selected':''}>➡ Sağ</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Seçenekler (Virgüllü)</label>
+                    <input type="text" class="col-options border-b w-full p-1 text-xs" value="${data.options || ''}" placeholder="Beyaz, Altın Meşe...">
+                </div>
+                
+                <button type="button" onclick="this.parentElement.remove()" class="bg-red-50 text-red-500 border border-red-200 w-8 h-8 rounded flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">×</button>
+            `;
+            container.appendChild(div);
+        }
+
+        window.onload = async () => {
+            const snap = await get(ref(db, 'ayarlar/form_duzeni'));
+            if (snap.exists()) {
+                const d = snap.val();
+                document.getElementById('mainTitle').value = d.mainTitle || "";
+                document.getElementById('accentColor').value = d.accentColor || "#000000";
+                document.getElementById('baseFontSize').value = d.baseFontSize || 14;
+                document.getElementById('noColumnWidth').value = d.noColumnWidth || 12;
+                if(d.columns) d.columns.forEach(c => addColumnRow(c));
+            }
+        };
+
+        document.getElementById('settings-form').onsubmit = async (e) => {
+            e.preventDefault();
+            // Sıralama değiştikçe DOM sırası değiştiği için Array.from doğru sırayla alır
+            const cols = Array.from(document.querySelectorAll('.card')).map(card => ({
+                name: card.querySelector('.col-name').value,
+                type: card.querySelector('.col-type').value,
+                width: card.querySelector('.col-width').value,
+                align: card.querySelector('.col-align').value,
+                options: card.querySelector('.col-options').value
+            }));
+
+            await set(ref(db, 'ayarlar/form_duzeni'), {
+                mainTitle: document.getElementById('mainTitle').value,
+                accentColor: document.getElementById('accentColor').value,
+                baseFontSize: document.getElementById('baseFontSize').value,
+                noColumnWidth: document.getElementById('noColumnWidth').value,
+                columns: cols
+            });
+            alert("⚙️ Ayarlar ve Sütun Sıralaması başarıyla güncellendi!");
+        };
+    </script>
+</body>
+</html>
