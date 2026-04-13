@@ -274,7 +274,7 @@
                 await html2pdf().set(opt).from(document.getElementById('order-form')).save();
 
                 // 2. WhatsApp'a yönlendir (Kullanıcı indirilen dosyayı ek olarak seçecek)
-                const msg = `Merhaba ${customerName}, ${no} nolu siparişiniz oluşturuldu.\nToplam Tutar: ${totalSale} TL.\nSipariş detaylarını içeren PDF telefonunuza indirildi, buradan size iletiyorum.`;
+                const msg = `Merhaba ${customerName}, ${no} nolu Teklif Formunuz Oluşturuldu.\nToplam Tutar: ${totalSale} TL.\nSipariş Detaylarını İçeren PDF Dosyasını Size iletiyorum.`;
                 
                 // Kısa bir gecikme ile WhatsApp'ı aç (indirme işlemiyle çakışmaması için)
                 setTimeout(() => {
