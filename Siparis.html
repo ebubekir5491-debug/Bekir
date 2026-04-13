@@ -42,8 +42,8 @@
     <div class="max-w-6xl mx-auto space-y-4">
         <div class="flex flex-wrap gap-2 no-print bg-white p-4 rounded-xl shadow-lg border-b-4 border-indigo-600">
             <button onclick="saveAndDownload()" class="bg-indigo-600 text-white px-6 py-4 rounded-xl font-black flex-1 shadow-lg hover:bg-indigo-700 transition-all uppercase">KAYDET VE PDF OLUŞTUR</button>
-            <button onclick="sendWhatsApp()" class="bg-green-600 text-white px-6 py-4 rounded-xl font-black flex-1 shadow-lg hover:bg-green-700 flex items-center justify-center gap-2">
-                <span>WHATSAPP GÖNDER</span>
+            <button onclick="sendWhatsAppWithPDF()" class="bg-green-600 text-white px-6 py-4 rounded-xl font-black flex-1 shadow-lg hover:bg-green-700 flex items-center justify-center gap-2">
+                <span>WHATSAPP GÖNDER (PDF İNDİRİR)</span>
             </button>
             <button onclick="addRow()" class="bg-slate-800 text-white px-6 py-4 rounded-xl font-bold">+ SATIR</button>
         </div>
@@ -252,11 +252,39 @@
             document.getElementById('form-number').innerText = (n + 1).toString().padStart(5, '0');
         }
 
-        window.sendWhatsApp = function() {
+        // --- GÜNCELLENEN WHATSAPP FONKSİYONU ---
+        window.sendWhatsAppWithPDF = async function() {
             const phone = document.getElementById('customer-phone').value;
+            const no = document.getElementById('form-number').innerText;
+            const customerName = document.getElementById('customer-name').value || "Müşteri";
+            const totalSale = document.getElementById('grand-total-sale').value || "0.00";
+
             if(!phone) return alert("Lütfen müşteri numarası girin!");
-            const msg = `Merhaba, ${document.getElementById('form-number').innerText} nolu siparişiniz hazırlanıyor. Satış fiyatı: ${document.getElementById('grand-total-sale').value} TL.`;
-            window.open(`https://wa.me/90${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+
+            // 1. Önce PDF oluştur ve indir
+            const opt = { 
+                margin: 0, 
+                filename: `${no}-${customerName}.pdf`, 
+                html2canvas: { scale: 3 }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            };
+            
+            try {
+                // PDF indirmeyi başlat
+                await html2pdf().set(opt).from(document.getElementById('order-form')).save();
+
+                // 2. WhatsApp'a yönlendir (Kullanıcı indirilen dosyayı ek olarak seçecek)
+                const msg = `Merhaba ${customerName}, ${no} nolu siparişiniz oluşturuldu.\nToplam Tutar: ${totalSale} TL.\nSipariş detaylarını içeren PDF telefonunuza indirildi, buradan size iletiyorum.`;
+                
+                // Kısa bir gecikme ile WhatsApp'ı aç (indirme işlemiyle çakışmaması için)
+                setTimeout(() => {
+                    const waUrl = `https://wa.me/90${phone.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+                    window.open(waUrl, '_blank');
+                }, 1500);
+
+            } catch (err) {
+                alert("İşlem sırasında hata oluştu: " + err.message);
+            }
         }
 
         window.saveAndDownload = async function() {
