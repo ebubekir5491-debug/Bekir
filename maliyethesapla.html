@@ -11,7 +11,7 @@
         .number-tag { @apply bg-emerald-50 text-emerald-600 border-emerald-200; }
         input, select { @apply bg-transparent outline-none text-center w-full; }
         th { @apply text-[10px] uppercase bg-slate-50 text-slate-500 p-2 border font-black; }
-        td { @apply border p-1 text-sm vertical-align-top; }
+        td { @apply border p-1 text-sm align-top; }
         .condition-card { @apply flex flex-col gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm mb-2; }
     </style>
 </head>
@@ -21,7 +21,7 @@
         <div class="bg-slate-900 p-4 text-white flex justify-between items-center">
             <div>
                 <h1 class="text-lg font-black tracking-tighter">⚙️ REÇETE YAPILANDIRMA</h1>
-                <p class="text-[9px] text-slate-400 uppercase tracking-widest">Koşul Bağımsız Formül Yönetimi</p>
+                <p class="text-[9px] text-slate-400 uppercase tracking-widest">Koşul Bazlı Formül Yönetimi</p>
             </div>
             <button onclick="saveReçete()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95">SİSTEME YÜKLE</button>
         </div>
@@ -88,6 +88,7 @@
             const recipeSnap = await get(ref(db, 'receteler'));
             if(recipeSnap.exists()) {
                 const data = recipeSnap.val();
+                // Verileri sırayla yükle
                 Object.values(data).forEach(r => addRow(r));
             } else { addRow(); }
             setupModalButtons();
@@ -118,17 +119,21 @@
                 <td><input type="number" class="item-price text-indigo-600 font-black pt-4" value="${data.birimFiyat || ''}" placeholder="0"></td>
                 <td class="p-2 bg-slate-50/30">
                     <div class="condition-list"></div>
-                    <button onclick="addConditionRow(this)" class="text-[10px] font-black text-indigo-600 mt-2 bg-white px-3 py-1 rounded-full border shadow-sm">+ YENİ KOŞUL & FORMÜL EKLE</button>
+                    <button onclick="addConditionRow(this)" class="add-cond-btn text-[10px] font-black text-indigo-600 mt-2 bg-white px-3 py-1 rounded-full border shadow-sm">+ YENİ KOŞUL & FORMÜL EKLE</button>
                 </td>
                 <td class="text-center pt-4"><button onclick="this.closest('tr').remove()" class="text-slate-300 hover:text-red-500">✕</button></td>
             `;
+            
             body.appendChild(tr);
 
+            // Önce tr'yi DOM'a ekledik, şimdi içindeki koşulları dolduruyoruz
             const listContainer = tr.querySelector('.condition-list');
+            const addBtn = tr.querySelector('.add-cond-btn');
+
             if(data.kosulGruplari && data.kosulGruplari.length > 0) {
-                data.kosulGruplari.forEach(kg => addConditionRow(tr.querySelector('button'), kg));
+                data.kosulGruplari.forEach(kg => addConditionRow(addBtn, kg));
             } else {
-                addConditionRow(tr.querySelector('button'));
+                addConditionRow(addBtn);
             }
         };
 
@@ -140,7 +145,7 @@
                 <div class="flex gap-2 items-center border-b border-slate-100 pb-2">
                     <select class="tag-header text-[10px] font-bold w-1/3 border rounded bg-slate-50 p-1" onchange="updateTagValues(this)">
                         <option value="">KOŞUL SEÇ...</option>
-                        ${formConfig.columns.map(c => `<option value="${c.name}" ${existingData?.baslik === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                        ${formConfig ? formConfig.columns.map(c => `<option value="${c.name}" ${existingData?.baslik === c.name ? 'selected' : ''}>${c.name}</option>`).join('') : ''}
                     </select>
                     <select class="tag-value text-[10px] font-black text-red-500 w-1/3 border rounded bg-slate-50 p-1">
                         <option value="">DEĞER...</option>
@@ -158,19 +163,32 @@
                 </div>
             `;
             container.appendChild(div);
-            updateTagValues(div.querySelector('.tag-header'), existingData?.deger);
+            
+            // Başlık seçiliyse değerleri doldur
+            const headerSelect = div.querySelector('.tag-header');
+            if (headerSelect.value || existingData) {
+                updateTagValues(headerSelect, existingData?.deger);
+            }
         };
 
         window.updateTagValues = function(selectEl, selectedVal = null) {
             const valSelect = selectEl.nextElementSibling;
+            if(!formConfig) return;
+            
             const column = formConfig.columns.find(c => c.name === selectEl.value);
-            valSelect.innerHTML = column?.type === 'select' 
-                ? column.options.split(',').map(o => `<option value="${o.trim()}" ${selectedVal === o.trim() ? 'selected' : ''}>${o.trim()}</option>`).join('')
-                : '<option value="ANY">TÜMÜ (DOLU)</option>';
+            if(column) {
+                valSelect.innerHTML = column.type === 'select' 
+                    ? column.options.split(',').map(o => `<option value="${o.trim()}" ${selectedVal === o.trim() ? 'selected' : ''}>${o.trim()}</option>`).join('')
+                    : `<option value="ANY" ${selectedVal === 'ANY' ? 'selected' : ''}>TÜMÜ (DOLU)</option>`;
+            } else {
+                valSelect.innerHTML = '<option value="">DEĞER...</option>';
+            }
         };
 
         window.openSelector = function(btn) {
             activeFormulaContainer = btn.previousElementSibling;
+            if(!formConfig) return alert("Form ayarları yüklenemedi!");
+            
             document.getElementById('header-zone').innerHTML = formConfig.columns.map(col => `
                 <button onclick="addToken('formula', '${col.name}')" class="bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase shadow-sm">${col.name}</button>
             `).join('');
