@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipariş ve Akıllı Kesim Listesi - Ada Sineklik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @page { size: A4 landscape; margin: 5mm; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; }
+            #print-area { width: 100%; border: none; box-shadow: none; margin: 0; }
+        }
+
+        #print-area {
+            width: 287mm;
+            min-height: 200mm;
+            margin: auto;
+            background: white;
+            padding: 5mm;
+        }
+
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 20px; }
+        th, td { border: 1px solid black; padding: 4px; text-align: center; word-wrap: break-word; font-size: 13px; font-weight: bold; }
+        th { background-color: #f8fafc; text-transform: uppercase; font-size: 11px; }
+        .section-title { background: #1e293b; color: white; padding: 6px; font-weight: 900; text-transform: uppercase; font-size: 14px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .customer-info { margin-bottom: 10px; border-bottom: 2px solid black; padding-bottom: 8px; }
+    </style>
+</head>
+<body class="bg-slate-200 p-4">
+
+    <div class="max-w-6xl mx-auto mb-6 no-print bg-white p-4 rounded-xl shadow-lg flex gap-4 items-end border-b-4 border-indigo-600">
+        <div class="flex-1">
+            <label class="block text-xs font-black text-slate-500 mb-1">FORM NUMARASI</label>
+            <input type="text" id="search-no" class="w-full p-3 bg-slate-100 border-2 border-slate-300 rounded-lg font-bold text-xl focus:border-indigo-500 outline-none" placeholder="Örn: 00005">
+        </div>
+        <button onclick="fetchOrder()" class="bg-indigo-600 text-white px-8 py-4 rounded-lg font-black hover:bg-indigo-700 transition-all uppercase text-sm">Verileri Yükle ve Hesapla</button>
+        <button onclick="printKesim()" class="bg-slate-800 text-white px-8 py-4 rounded-lg font-black hover:bg-slate-900 transition-all uppercase text-sm">PDF OLUŞTUR</button>
+    </div>
+
+    <div id="print-area" class="shadow-2xl rounded-sm">
+        <div class="flex justify-between items-center customer-info">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 leading-none">ADA SİNEKLİK <span class="text-indigo-600 text-xl">| ÜRETİM FORMU</span></h1>
+                <p id="order-date" class="text-xs font-bold text-slate-500 italic mt-1">Tarih: --</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Sipariş No</p>
+                <p id="order-no-display" class="text-3xl font-mono font-black text-red-600 leading-none">-----</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-4 text-xs bg-slate-50 p-2 border border-black rounded">
+            <div><span class="font-black">MÜŞTERİ:</span> <span id="cust-name" class="uppercase font-bold">---</span></div>
+            <div><span class="font-black">TELEFON:</span> <span id="cust-phone">---</span></div>
+            <div class="text-right font-black text-red-700 uppercase">Toplam Satış: <span id="cust-total">0.00</span> TL</div>
+        </div>
+
+        <div class="section-title">
+            <span>1. SİPARİŞ LİSTESİ (NET ÖLÇÜLER)</span>
+            <span class="text-[10px] opacity-60 font-normal">Müşteri onaylı asıl ölçülerdir</span>
+        </div>
+        <table id="siparis-table">
+            <thead id="siparis-head"></thead>
+            <tbody id="siparis-body">
+                <tr><td colspan="100%" class="py-10 text-slate-400 italic font-normal">Veri yüklenmedi...</td></tr>
+            </tbody>
+        </table>
+
+        <div class="section-title bg-emerald-800">
+            <span>2. İMALAT KESİM DETAYI (AKILLI HESAPLAMA)</span>
+            <span class="text-[10px] opacity-80 font-normal">Çoklu koşullu grup mantığı uygulanmıştır</span>
+        </div>
+        <table id="kesim-table">
+            <thead id="kesim-head" class="bg-emerald-50"></thead>
+            <tbody id="kesim-body">
+                <tr><td colspan="100%" class="py-10 text-slate-400 italic font-normal text-sm">Kurallar bekleniyor...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.fetchOrder = async function() {
+            const orderNo = document.getElementById('search-no').value.padStart(5, '0');
+            if(!orderNo) return alert("Lütfen form numarası girin!");
+
+            try {
+                const [siparisSnap, siparisAyariSnap, kesimAyariSnap] = await Promise.all([
+                    get(ref(db, `siparisler/${orderNo}`)),
+                    get(ref(db, 'ayarlar/form_duzeni')),
+                    get(ref(db, 'ayarlar/kesim_ayarlari'))
+                ]);
+
+                if(!siparisSnap.exists()) return alert("Sipariş bulunamadı!");
+
+                const kesimVerisi = kesimAyariSnap.exists() ? 
+                    (Array.isArray(kesimAyariSnap.val()) ? kesimAyariSnap.val() : Object.values(kesimAyariSnap.val())) : [];
+
+                renderData(
+                    siparisSnap.val(), 
+                    siparisAyariSnap.val()?.columns || [], 
+                    kesimVerisi
+                );
+            } catch (err) {
+                alert("Hata: " + err.message);
+            }
+        }
+
+        function renderData(data, siparisCols, kesimGroups) {
+            // Üst Bilgiler
+            document.getElementById('order-no-display').innerText = data.form_bilgileri.form_no;
+            document.getElementById('order-date').innerText = "Tarih: " + data.form_bilgileri.tarih;
+            document.getElementById('cust-name').innerText = data.form_bilgileri.musteri_ad;
+            document.getElementById('cust-phone').innerText = data.form_bilgileri.musteri_tel;
+            document.getElementById('cust-total').innerText = data.form_bilgileri.toplam_satis_fiyati;
+
+            // --- 1. SİPARİŞ TABLOSU ---
+            const sHead = document.getElementById('siparis-head');
+            const sBody = document.getElementById('siparis-body');
+            
+            let sHeadHtml = `<tr><th style="width:40px">NO</th>`;
+            siparisCols.forEach(col => sHeadHtml += `<th>${col.name}</th>`);
+            sHead.innerHTML = sHeadHtml + `</tr>`;
+
+            let sBodyHtml = "";
+            data.siparis_icerigi.forEach((satir) => {
+                sBodyHtml += `<tr><td>${satir.satir_no}</td>`;
+                siparisCols.forEach(col => sBodyHtml += `<td>${satir[col.name] || '-'}</td>`);
+                sBodyHtml += `</tr>`;
+            });
+            sBody.innerHTML = sBodyHtml;
+
+            // --- 2. AKILLI KESİM TABLOSU (Çoklu Kural Mantığı) ---
+            const kHead = document.getElementById('kesim-head');
+            const kBody = document.getElementById('kesim-body');
+            
+            // Başlıkları oluştur (Grup Başlıkları)
+            let kHeadHtml = `<tr><th style="width:40px">NO</th>`;
+            kesimGroups.forEach(group => {
+                kHeadHtml += `<th style="width:${group.width}px">${group.title}</th>`;
+            });
+            kHead.innerHTML = kHeadHtml + `</tr>`;
+
+            let kBodyHtml = "";
+            data.siparis_icerigi.forEach((satir, index) => {
+                kBodyHtml += `<tr><td>${index + 1}</td>`;
+                
+                // Her bir sütun (grup) için hesaplama yap
+                kesimGroups.forEach(group => {
+                    let sonuc = "-";
+                    
+                    // Grup içindeki alt kuralları sırayla kontrol et
+                    if (group.rules && Array.isArray(group.rules)) {
+                        for (let rule of group.rules) {
+                            const siparisDegeri = String(satir[rule.condCol] || "").toLowerCase().trim();
+                            const arananDeger = String(rule.condVal || "").toLowerCase().trim();
+                            
+                            // Koşul kontrolü: Kural değeri boşsa her zaman geçerlidir, değilse eşitlik arar
+                            const kosulSaglandi = !rule.condVal || siparisDegeri === arananDeger;
+
+                            if (kosulSaglandi) {
+                                const hedefSayi = parseFloat(satir[rule.targetCol]) || 0;
+                                const kuralDeger = parseFloat(rule.calcValue) || 0;
+
+                                if (hedefSayi > 0) {
+                                    let hesap;
+                                    switch(rule.operator) {
+                                        case '+': hesap = hedefSayi + kuralDeger; break;
+                                        case '*': hesap = hedefSayi * kuralDeger; break;
+                                        case '/': hesap = kuralDeger !== 0 ? hedefSayi / kuralDeger : 0; break;
+                                        default:  hesap = hedefSayi - kuralDeger; // Varsayılan '-'
+                                    }
+                                    
+                                    let formatliSonuc = hesap.toFixed(1);
+                                    sonuc = formatliSonuc.endsWith('.0') ? formatliSonuc.split('.')[0] : formatliSonuc;
+                                    
+                                    // İlk eşleşen kuralda dur (öncelik sırası)
+                                    break; 
+                                }
+                            }
+                        }
+                    }
+                    
+                    kBodyHtml += `<td class="${sonuc !== '-' ? 'text-emerald-700' : 'text-slate-300'}">${sonuc}</td>`;
+                });
+                kBodyHtml += `</tr>`;
+            });
+            kBody.innerHTML = kBodyHtml || `<tr><td colspan="100%">Kesim grubu tanımlanmamış.</td></tr>`;
+        }
+
+        window.printKesim = function() {
+            const no = document.getElementById('order-no-display').innerText;
+            if(no === "-----") return alert("Önce verileri yüklemelisiniz!");
+            
+            const element = document.getElementById('print-area');
+            const opt = {
+                margin: 0,
+                filename: `ADA_URETIM_FORMU_${no}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 3, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>
