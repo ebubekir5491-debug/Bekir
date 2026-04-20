@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Akıllı Kesim Formül Editörü - Gelişmiş</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        .sortable-ghost { opacity: 0.4; background: #e2e8f0; border: 2px dashed #6366f1; }
+        .chain-item:first-child .chain-operator { display: none; }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden">
+        <div class="bg-slate-900 p-6 text-white flex justify-between items-center border-b-4 border-emerald-500">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight">🤖 AKILLI KESİM MOTORU</h1>
+                <p class="text-slate-400 text-xs mt-1 uppercase font-bold">Sınırsız Zincirleme İşlem Editörü</p>
+            </div>
+            <button onclick="saveSettings()" class="bg-emerald-500 hover:bg-emerald-600 px-10 py-3 rounded-xl font-bold transition-all shadow-lg">AYARLARI KAYDET</button>
+        </div>
+
+        <div class="p-6">
+            <div id="formula-list" class="space-y-6"></div>
+
+            <button onclick="addFormulaGroup()" class="mt-8 w-full border-2 border-dashed border-slate-300 p-6 rounded-2xl text-slate-500 font-bold hover:bg-slate-50 hover:border-emerald-300 transition-all flex justify-center items-center gap-2">
+                <span class="text-3xl">+</span> YENİ KESİM BAŞLIĞI EKLE
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let mevcutSutunlar = [];
+
+        const el = document.getElementById('formula-list');
+        Sortable.create(el, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost' });
+
+        window.onload = async () => {
+            const configSnap = await get(ref(db, 'ayarlar/form_duzeni'));
+            if(configSnap.exists()) {
+                mevcutSutunlar = configSnap.val().columns.map(c => c.name);
+            }
+
+            const snap = await get(ref(db, 'ayarlar/kesim_ayarlari'));
+            if(snap.exists()) {
+                const items = Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val());
+                items.forEach(item => addFormulaGroup(item));
+            } else {
+                addFormulaGroup();
+            }
+        };
+
+        window.addFormulaGroup = function(groupData = null) {
+            const container = document.getElementById('formula-list');
+            const groupId = Date.now() + Math.floor(Math.random() * 1000);
+            
+            const html = `
+                <div class="formula-group bg-white border-2 border-slate-200 rounded-3xl shadow-sm overflow-hidden" id="group-${groupId}">
+                    <div class="bg-slate-50 p-4 border-b flex items-center gap-4">
+                        <div class="drag-handle cursor-grab p-2 text-slate-400 hover:text-indigo-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                        </div>
+                        <input type="text" class="group-title bg-transparent border-b-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase" value="${groupData ? groupData.title : 'YENİ KESİM BAŞLIĞI'}" placeholder="Başlık Giriniz">
+                        <div class="flex items-center gap-2 ml-auto">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase">Sütun Genişliği (px):</label>
+                            <input type="number" class="group-width w-16 p-1 text-xs border rounded font-bold text-center" value="${groupData ? groupData.width : '100'}">
+                            <button onclick="document.getElementById('group-${groupId}').remove()" class="text-red-400 hover:text-red-600 ml-2">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-4 sub-rules-container" id="sub-rules-${groupId}"></div>
+                    <div class="p-3 bg-slate-50/50 border-t">
+                        <button onclick="addSubRule('${groupId}')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                            <span>+</span> BU BAŞLIĞA YENİ KOŞUL/FORMÜL EKLE
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+
+            if(groupData && groupData.rules) {
+                groupData.rules.forEach(r => addSubRule(groupId, r));
+            } else {
+                addSubRule(groupId);
+            }
+        };
+
+        window.addSubRule = function(groupId, ruleData = null) {
+            const subContainer = document.getElementById(`sub-rules-${groupId}`);
+            const ruleId = Date.now() + Math.floor(Math.random() * 1000);
+            const conditionOptionsHtml = mevcutSutunlar.map(s => `<option value="${s}" ${ruleData && ruleData.condCol == s ? 'selected' : ''}>${s}</option>`).join('');
+
+            const html = `
+                <div class="sub-rule-row bg-slate-50 p-4 rounded-2xl border border-slate-200 relative group" id="rule-${ruleId}">
+                    <div class="flex flex-wrap items-center gap-4 mb-3">
+                        <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-indigo-100 shadow-sm">
+                            <label class="text-[9px] font-black text-indigo-500 uppercase">EĞER</label>
+                            <select class="condCol p-1 text-xs rounded border border-slate-200 bg-slate-50 font-bold italic">${conditionOptionsHtml}</select>
+                            
+                            <select class="condOp p-1 text-xs rounded border border-slate-200 bg-white font-bold">
+                                <option value="==" ${ruleData && ruleData.condOp == '==' ? 'selected' : ''}>EŞİT (=)</option>
+                                <option value=">" ${ruleData && ruleData.condOp == '>' ? 'selected' : ''}>BÜYÜK (>)</option>
+                                <option value="<" ${ruleData && ruleData.condOp == '<' ? 'selected' : ''}>KÜÇÜK (<)</option>
+                                <option value=">=" ${ruleData && ruleData.condOp == '>=' ? 'selected' : ''}>B. EŞİT (>=)</option>
+                                <option value="<=" ${ruleData && ruleData.condOp == '<=' ? 'selected' : ''}>K. EŞİT (<=)</option>
+                            </select>
+
+                            <input type="text" class="condVal p-1 text-xs rounded border border-slate-200 w-24 font-bold text-center" value="${ruleData ? ruleData.condVal : ''}" placeholder="Değer">
+                            <label class="text-[9px] font-black text-indigo-500 uppercase">İSE</label>
+                        </div>
+                        <button onclick="document.getElementById('rule-${ruleId}').remove()" class="ml-auto text-slate-300 hover:text-red-500">✕</button>
+                    </div>
+
+                    <div class="calculation-chain flex flex-wrap items-center gap-2" id="chain-${ruleId}">
+                        </div>
+                    
+                    <button onclick="addChainStep('${ruleId}')" class="mt-2 text-[10px] font-bold text-emerald-600 hover:underline">+ İŞLEM EKLE</button>
+                </div>
+            `;
+            subContainer.insertAdjacentHTML('beforeend', html);
+
+            if(ruleData && ruleData.chain) {
+                ruleData.chain.forEach(step => addChainStep(ruleId, step));
+            } else {
+                if(ruleData && ruleData.targetCol) {
+                    addChainStep(ruleId, { type: 'col', val: ruleData.targetCol, op: '+' });
+                    addChainStep(ruleId, { type: 'val', val: ruleData.calcValue, op: ruleData.operator || '-' });
+                } else {
+                    addChainStep(ruleId);
+                }
+            }
+        };
+
+        window.addChainStep = function(ruleId, stepData = null) {
+            const chainContainer = document.getElementById(`chain-${ruleId}`);
+            const stepId = Date.now() + Math.floor(Math.random() * 1000);
+            const isCol = !stepData || stepData.type === 'col';
+            
+            const colOptions = mevcutSutunlar.map(s => `<option value="${s}" ${stepData && stepData.val == s ? 'selected' : ''}>${s}</option>`).join('');
+
+            const html = `
+                <div class="chain-item flex items-center gap-1 bg-white p-1.5 rounded-lg border border-emerald-100 shadow-sm" id="step-${stepId}">
+                    <select class="chain-operator p-1 text-[10px] font-black bg-emerald-50 rounded border-none mr-1">
+                        <option value="+" ${stepData && stepData.op == '+' ? 'selected' : ''}>+</option>
+                        <option value="-" ${stepData && stepData.op == '-' ? 'selected' : ''}>-</option>
+                        <option value="*" ${stepData && stepData.op == '*' ? 'selected' : ''}>x</option>
+                        <option value="/" ${stepData && stepData.op == '/' ? 'selected' : ''}>/</option>
+                    </select>
+
+                    <select class="chain-type p-1 text-[9px] font-bold border-none bg-slate-100 rounded" onchange="toggleStepInput('${stepId}', this.value)">
+                        <option value="col" ${isCol ? 'selected' : ''}>SÜTUN</option>
+                        <option value="val" ${!isCol ? 'selected' : ''}>SAYI</option>
+                    </select>
+
+                    <div id="input-cont-${stepId}">
+                        ${isCol ? 
+                            `<select class="chain-val p-1 text-xs font-bold border-none focus:ring-0">${colOptions}</select>` : 
+                            `<input type="number" step="0.1" class="chain-val p-1 text-xs font-bold border-none w-16 focus:ring-0 text-center" value="${stepData ? stepData.val : '0'}">`
+                        }
+                    </div>
+
+                    <button onclick="document.getElementById('step-${stepId}').remove()" class="text-slate-300 hover:text-red-400 text-xs px-1">×</button>
+                </div>
+            `;
+            chainContainer.insertAdjacentHTML('beforeend', html);
+        };
+
+        window.toggleStepInput = function(stepId, type) {
+            const cont = document.getElementById(`input-cont-${stepId}`);
+            if(type === 'col') {
+                const colOptions = mevcutSutunlar.map(s => `<option value="${s}">${s}</option>`).join('');
+                cont.innerHTML = `<select class="chain-val p-1 text-xs font-bold border-none focus:ring-0">${colOptions}</select>`;
+            } else {
+                cont.innerHTML = `<input type="number" step="0.1" class="chain-val p-1 text-xs font-bold border-none w-16 focus:ring-0 text-center" value="0">`;
+            }
+        };
+
+        window.saveSettings = async function() {
+            const groups = document.querySelectorAll('.formula-group');
+            const data = Array.from(groups).map(group => {
+                const subRows = group.querySelectorAll('.sub-rule-row');
+                const rules = Array.from(subRows).map(row => {
+                    const steps = row.querySelectorAll('.chain-item');
+                    const chain = Array.from(steps).map(step => ({
+                        op: step.querySelector('.chain-operator').value,
+                        type: step.querySelector('.chain-type').value,
+                        val: step.querySelector('.chain-val').value
+                    }));
+
+                    return {
+                        condCol: row.querySelector('.condCol').value,
+                        condOp: row.querySelector('.condOp').value,
+                        condVal: row.querySelector('.condVal').value,
+                        chain: chain
+                    };
+                });
+
+                return {
+                    title: group.querySelector('.group-title').value,
+                    width: group.querySelector('.group-width').value,
+                    rules: rules
+                };
+            });
+
+            try {
+                await set(ref(db, 'ayarlar/kesim_ayarlari'), data);
+                alert("Başarıyla kaydedildi! Artık büyüktür/küçüktür koşulları kullanılabilir.");
+            } catch (e) { alert("Hata: " + e.message); }
+        };
+    </script>
+</body>
+</html>
