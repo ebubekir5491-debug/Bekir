@@ -73,11 +73,11 @@
             <div class="grid grid-cols-2 gap-4 mb-6 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-black uppercase text-slate-600">Müşteri:</span>
-                    <input type="text" id="customer-name" class="border-b border-dotted border-slate-400 font-bold" placeholder="İsim girin">
+                    <input type="text" id="customer-name" oninput="saveDraft()" class="border-b border-dotted border-slate-400 font-bold" placeholder="İsim girin">
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-black uppercase text-slate-600">Tel:</span>
-                    <input type="text" id="customer-phone" class="border-b border-dotted border-slate-400 font-bold" placeholder="05XX">
+                    <input type="text" id="customer-phone" oninput="saveDraft()" class="border-b border-dotted border-slate-400 font-bold" placeholder="05XX">
                 </div>
             </div>
 
@@ -90,7 +90,7 @@
                 <div class="w-1/2 border-2 border-black p-3 rounded-lg flex items-center justify-between">
                     <span class="text-sm font-black uppercase tracking-widest">Genel Toplam Satış Fiyatı:</span>
                     <div class="flex items-center gap-1 w-1/2">
-                        <input type="text" id="grand-total-sale" class="text-right text-xl font-black text-red-700 border-none outline-none" placeholder="0,00">
+                        <input type="text" id="grand-total-sale" oninput="saveDraft()" class="text-right text-xl font-black text-red-700 border-none outline-none" placeholder="0,00">
                         <span class="font-black text-xl text-red-700">TL</span>
                     </div>
                 </div>
@@ -132,11 +132,14 @@
                 config = snap.val();
                 renderUI();
                 await setNextNo();
+                // Verileri render'dan sonra yükle
+                loadDraft();
             }
 
             const recSnap = await get(ref(db, 'receteler'));
             if(recSnap.exists()) {
                 recipes = recSnap.val();
+                calculateAllMaliyetler(); // Draft yüklendiyse maliyeti hesapla
             }
         };
 
@@ -189,9 +192,70 @@
         window.handleInputChange = function(el) {
             checkAutoRow(el);
             calculateAllMaliyetler();
+            saveDraft(); // Her girişte taslağı güncelle
         }
 
-        function calculateAllMaliyetler() {
+        // --- LOCALSTORAGE TASLAK SİSTEMİ ---
+        window.saveDraft = function() {
+            if(isEditMode) return; // Düzenleme modunda taslak kaydetme
+
+            const draftData = {
+                musteri_ad: document.getElementById('customer-name').value,
+                musteri_tel: document.getElementById('customer-phone').value,
+                toplam_satis: document.getElementById('grand-total-sale').value,
+                icerik: []
+            };
+
+            const rows = document.querySelectorAll('#table-body tr');
+            rows.forEach(tr => {
+                const rowData = {};
+                const inputs = tr.querySelectorAll('input, select');
+                let hasValue = false;
+                config.columns.forEach((col, i) => {
+                    if(inputs[i].value) {
+                        rowData[col.name] = inputs[i].value;
+                        hasValue = true;
+                    }
+                });
+                if(hasValue) draftData.icerik.push(rowData);
+            });
+
+            localStorage.setItem('ada_sineklik_draft', JSON.stringify(draftData));
+        }
+
+        function loadDraft() {
+            const saved = localStorage.getItem('ada_sineklik_draft');
+            if(!saved || isEditMode) return;
+
+            const data = JSON.parse(saved);
+            document.getElementById('customer-name').value = data.musteri_ad || "";
+            document.getElementById('customer-phone').value = data.musteri_tel || "";
+            document.getElementById('grand-total-sale').value = data.toplam_satis || "";
+
+            const body = document.getElementById('table-body');
+            if(data.icerik && data.icerik.length > 0) {
+                body.innerHTML = "";
+                data.icerik.forEach((row) => {
+                    addRow();
+                    const tr = body.lastElementChild;
+                    const inputs = tr.querySelectorAll('input, select');
+                    config.columns.forEach((col, i) => {
+                        if(row[col.name]) inputs[i].value = row[col.name];
+                    });
+                });
+                // Boş satırları tamamla
+                if(data.icerik.length < 5) {
+                    for(let i=0; i < (5 - data.icerik.length); i++) addRow();
+                }
+            }
+        }
+
+        function clearDraft() {
+            localStorage.removeItem('ada_sineklik_draft');
+        }
+
+        // --- MALİYET HESAPLAMA ---
+        window.calculateAllMaliyetler = function() {
             const rows = document.querySelectorAll('#table-body tr');
             const rowCostsContainer = document.getElementById('row-costs');
             rowCostsContainer.innerHTML = "";
@@ -265,7 +329,6 @@
             document.getElementById('form-number').innerText = (n + 1).toString().padStart(5, '0');
         }
 
-        // --- SİPARİŞİ GETİR (ARAMA KUTUSUNDAN) ---
         window.fetchOrder = async function() {
             const noVal = document.getElementById('search-order-no').value;
             if(!noVal) return alert("Lütfen aramak istediğiniz numarayı girin!");
@@ -279,7 +342,6 @@
                 const data = snap.val();
                 isEditMode = true;
                 
-                // Formu Güncelle
                 document.getElementById('edit-mode-badge').classList.remove('hidden');
                 document.getElementById('form-number').innerText = no;
                 document.getElementById('customer-name').value = data.form_bilgileri.musteri_ad || "";
@@ -343,6 +405,7 @@
                 siparis_icerigi: rows
             });
 
+            clearDraft(); // Kayıttan sonra taslağı sil
             return { no, customerName };
         }
 
