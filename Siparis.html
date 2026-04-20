@@ -3,95 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ada Sineklik | Akıllı Yönetim</title>
+    <title>Ada Sineklik | Akıllı Yönetim Paneli</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         @media print { .no-print { display: none !important; } }
-        #order-form { width: 210mm; min-height: 297mm; margin: auto; background: white; padding: 10mm; }
+        #order-form { width: 210mm; min-height: 297mm; margin: auto; background: white; padding: 10mm; border: 1px solid #ddd; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid black; padding: 4px; word-wrap: break-word; }
-        input, select { border: none !important; outline: none !important; background: transparent; width: 100%; font-family: inherit; font-size: inherit; }
-        .align-left { text-align: left; }
-        .align-center { text-align: center; }
-        .align-right { text-align: right; }
-        #cost-sidebar { position: fixed; right: 20px; top: 100px; width: 280px; z-index: 50; transition: transform 0.3s ease; }
-        #cost-sidebar.hidden-panel { transform: translateX(320px); }
+        th, td { border: 1px solid black; padding: 6px; word-wrap: break-word; font-size: 13px; }
+        input, select { border: none !important; outline: none !important; background: transparent; width: 100%; font-family: inherit; }
         
-        /* Asistan Görsel Efektleri */
-        .ai-pulse { animation: pulse-red 1.5s infinite; shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        .voice-active { background-color: #fee2e2 !important; border-radius: 4px; }
+        /* Asistan Efektleri */
+        .ai-pulse { animation: pulse-red 1.5s infinite; box-shadow: 0 0 25px rgba(220, 38, 38, 0.8); }
+        @keyframes pulse-red { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .voice-active { background-color: #fee2e2 !important; border: 2px solid #ef4444 !important; transition: all 0.3s; }
+        
+        #cost-sidebar { position: fixed; right: 20px; top: 100px; width: 280px; z-index: 50; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .hidden-panel { transform: translateX(350px); }
     </style>
 </head>
-<body class="bg-slate-200 p-2 md:p-6 pb-24">
+<body class="bg-slate-100 p-4 pb-28">
 
-    <div id="cost-sidebar" class="no-print hidden-panel bg-slate-900 text-white p-5 rounded-2xl shadow-2xl border-l-4 border-indigo-500">
+    <div id="cost-sidebar" class="no-print hidden-panel bg-slate-900 text-white p-5 rounded-2xl shadow-2xl border-l-4 border-red-600">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xs font-black uppercase text-indigo-400 tracking-widest">💰 MALİYET ANALİZİ</h2>
-            <button onclick="toggleCostPanel()" class="text-slate-400 hover:text-white text-xl">×</button>
+            <h2 class="text-xs font-black text-red-500 tracking-widest uppercase">💰 CANLI ANALİZ</h2>
+            <button onclick="toggleCostPanel()" class="text-slate-400 hover:text-white">×</button>
         </div>
-        <div id="row-costs" class="space-y-2 max-h-[400px] overflow-y-auto mb-4 pr-2 text-[11px]"></div>
+        <div id="row-costs" class="space-y-2 max-h-[300px] overflow-y-auto mb-4 pr-2 text-[11px] font-mono"></div>
         <div class="border-t border-slate-700 pt-4">
+            <p class="text-[10px] text-slate-400 uppercase">Toplam Tahmini Maliyet</p>
             <p id="total-cost-display" class="text-3xl font-black text-emerald-400">0.00 TL</p>
         </div>
     </div>
 
-    <div class="fixed bottom-6 right-6 z-[100] no-print">
-        <button id="ai-trigger" onclick="toggleSmartAssistant()" class="bg-red-600 text-white w-20 h-20 rounded-full shadow-2xl flex flex-col items-center justify-center hover:scale-110 transition-all border-4 border-white">
-            <i class="fas fa-robot text-2xl mb-1"></i>
-            <span class="text-[10px] font-black uppercase">ASİSTAN</span>
+    <div class="fixed bottom-8 right-8 z-[100] no-print">
+        <button id="ai-trigger" onclick="toggleSmartAssistant()" class="bg-red-600 text-white w-20 h-20 rounded-full shadow-[0_10px_40px_rgba(220,38,38,0.5)] flex flex-col items-center justify-center hover:scale-110 transition-all border-4 border-white">
+            <i class="fas fa-microphone-alt text-2xl mb-1"></i>
+            <span class="text-[9px] font-black uppercase tracking-tighter">SİSTEMİ YÖNET</span>
         </button>
     </div>
 
-    <div class="max-w-6xl mx-auto space-y-4">
-        <div class="flex flex-wrap items-center gap-4 no-print bg-white p-4 rounded-xl shadow-lg border-b-4 border-indigo-600">
-            <div class="flex-1 flex gap-2">
-                <button onclick="saveAndDownload()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm">PDF</button>
-                <button onclick="saveAndShareWhatsApp()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm">WHATSAPP</button>
-                <button onclick="addRow()" class="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm">+ SATIR</button>
-                <button onclick="toggleCostPanel()" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm">MALİYET</button>
+    <div class="max-w-6xl mx-auto mb-6 no-print flex flex-wrap gap-3 items-center bg-white p-4 rounded-2xl shadow-sm border-b-4 border-indigo-600">
+        <div class="flex flex-1 gap-2">
+            <button onclick="saveAndDownload()" class="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all">PDF OLUŞTUR</button>
+            <button onclick="saveAndShareWhatsApp()" class="bg-green-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-green-700">WHATSAPP</button>
+            <button onclick="addRow()" class="bg-slate-800 text-white px-5 py-3 rounded-xl font-bold">+ SATIR EKLE</button>
+        </div>
+        <div class="flex gap-2 bg-slate-100 p-2 rounded-xl">
+            <input type="number" id="search-order-no" class="w-24 bg-transparent font-bold text-center" placeholder="Sipariş No">
+            <button onclick="fetchOrder()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold">BUL</button>
+        </div>
+    </div>
+
+    <div id="order-form" class="shadow-2xl relative">
+        <div id="edit-mode-badge" class="hidden no-print absolute -top-3 -left-3 bg-yellow-400 text-black text-[11px] font-black px-4 py-1 rounded-full border-2 border-black animate-bounce">DÜZENLEME MODU AKTİF</div>
+
+        <div class="flex justify-between items-center border-b-4 border-black pb-4 mb-6">
+            <div>
+                <h1 id="dynamic-title" class="text-4xl font-black uppercase text-indigo-900 tracking-tighter">YÜKLENİYOR...</h1>
+                <p class="text-xs font-bold text-slate-500 italic mt-1">Sipariş Kayıt Tarihi: <span id="current-date">--.--.----</span></p>
             </div>
-            <div class="flex items-center gap-2">
-                <input type="number" id="search-order-no" class="w-20 border p-2 rounded text-sm font-bold" placeholder="No">
-                <button onclick="fetchOrder()" class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">BUL</button>
+            <div class="text-right border-l-4 border-red-600 pl-4">
+                <p class="text-[10px] font-black text-slate-400 uppercase">FORM NUMARASI</p>
+                <p id="form-number" class="text-4xl font-mono font-black text-red-600 tracking-widest">00000</p>
             </div>
         </div>
 
-        <div id="order-form" class="shadow-2xl relative">
-            <div id="edit-mode-badge" class="hidden no-print absolute -top-2 -left-2 bg-yellow-400 text-black text-[10px] font-black px-4 py-1 rounded-full shadow-md border-2 border-black">DÜZENLEME MODU</div>
-
-            <div class="flex justify-between items-center border-b-4 border-black pb-4 mb-4">
-                <div>
-                    <h1 id="dynamic-title" class="text-4xl font-black uppercase tracking-tighter text-indigo-900">...</h1>
-                    <p class="text-xs font-bold text-slate-500 italic">Tarih: <span id="current-date"></span></p>
-                </div>
-                <div class="text-right border-l-4 border-red-600 pl-4 flex flex-col items-end">
-                    <p id="form-number" class="text-3xl font-mono font-black text-red-600">00000</p>
-                </div>
+        <div class="grid grid-cols-2 gap-6 mb-8 p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-black text-slate-600 uppercase">MÜŞTERİ ADI:</span>
+                <input type="text" id="customer-name" oninput="saveDraft()" class="border-b-2 border-slate-300 font-bold text-lg focus:border-indigo-600 transition-all" placeholder="...">
             </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-6 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-black uppercase text-slate-600">Müşteri:</span>
-                    <input type="text" id="customer-name" oninput="saveDraft()" class="border-b border-dotted font-bold">
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-black uppercase text-slate-600">Tel:</span>
-                    <input type="text" id="customer-phone" oninput="saveDraft()" class="border-b border-dotted font-bold">
-                </div>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-black text-slate-600 uppercase">TELEFON:</span>
+                <input type="text" id="customer-phone" oninput="saveDraft()" class="border-b-2 border-slate-300 font-bold text-lg focus:border-indigo-600 transition-all" placeholder="05__ ___ __ __">
             </div>
+        </div>
 
-            <table>
-                <thead id="table-head" class="bg-slate-100 font-bold"></thead>
-                <tbody id="table-body"></tbody>
-            </table>
+        <table>
+            <thead id="table-head" class="bg-slate-100 font-bold uppercase"></thead>
+            <tbody id="table-body"></tbody>
+        </table>
 
-            <div class="mt-6 flex justify-end">
-                <div class="w-1/2 border-2 border-black p-3 rounded-lg flex items-center justify-between">
-                    <span class="text-sm font-black uppercase tracking-widest text-red-700">Genel Toplam:</span>
-                    <input type="text" id="grand-total-sale" oninput="saveDraft()" class="text-right text-xl font-black text-red-700 w-1/2" placeholder="0.00">
+        <div class="mt-8 flex justify-end">
+            <div class="w-1/2 border-4 border-black p-4 rounded-xl flex items-center justify-between bg-slate-50">
+                <span class="text-lg font-black uppercase tracking-tighter">GENEL TOPLAM SATIŞ:</span>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="grand-total-sale" oninput="saveDraft()" class="text-right text-3xl font-black text-red-700 w-32" placeholder="0.00">
+                    <span class="font-black text-2xl text-red-700">TL</span>
                 </div>
             </div>
         </div>
@@ -117,8 +117,161 @@
         let config = null;
         let recipes = [];
         let isEditMode = false;
-        let isAssistantActive = false;
+        let isAILending = false;
 
+        // --- ASİSTAN AYARLARI ---
+        const recognition = (window.SpeechRecognition || window.webkitSpeechRecognition) ? new (window.SpeechRecognition || window.webkitSpeechRecognition)() : null;
+        if(recognition) {
+            recognition.lang = 'tr-TR';
+            recognition.continuous = false;
+            recognition.interimResults = false;
+        }
+
+        async function speak(text) {
+            return new Promise(resolve => {
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'tr-TR';
+                utter.pitch = 0.85; // Hafif kalın, tok bir ses
+                utter.rate = 1.05;
+                utter.onend = resolve;
+                window.speechSynthesis.speak(utter);
+            });
+        }
+
+        function playBeep() {
+            const ctx = new AudioContext();
+            const osc = ctx.createOscillator();
+            osc.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.1);
+        }
+
+        // --- MERKEZİ ASİSTAN ZEKA (KOMUT ANALİZİ) ---
+        window.toggleSmartAssistant = async function() {
+            if(isAILending) return;
+            isAILending = true;
+            document.getElementById('ai-trigger').classList.add('ai-pulse');
+            
+            await speak("Seni dinliyorum patron. Ne yapmamı istersin?");
+            playBeep();
+            recognition.start();
+
+            recognition.onresult = async (event) => {
+                const command = event.results[0][0].transcript.toLowerCase();
+                console.log("Gelen Komut:", command);
+                await processCommand(command);
+            };
+
+            recognition.onerror = () => stopAI();
+        }
+
+        async function processCommand(cmd) {
+            // 1. PDF Komutları
+            if(cmd.includes("pdf") || cmd.includes("kaydet") || cmd.includes("dosya yap")) {
+                await speak("Hemen PDF dosyasını hazırlayıp kaydediyorum.");
+                saveAndDownload();
+                return;
+            }
+
+            // 2. WhatsApp Komutları
+            if(cmd.includes("whatsapp") || cmd.includes("paylaş") || cmd.includes("gönder")) {
+                await speak("Siparişi WhatsApp üzerinden paylaşman için hazırlıyorum.");
+                saveAndShareWhatsApp();
+                return;
+            }
+
+            // 3. Sipariş Bulma
+            if(cmd.includes("bul") || cmd.includes("getir") || cmd.includes("nolu")) {
+                let num = cmd.replace(/[^0-9]/g, '');
+                if(num) {
+                    document.getElementById('search-order-no').value = num;
+                    await speak(num + " numaralı siparişi arayıp buluyorum.");
+                    fetchOrder();
+                } else {
+                    await speak("Hangi numaralı siparişi aramamı istersin patron?");
+                    recognition.start();
+                }
+                return;
+            }
+
+            // 4. Maliyet Kontrolü
+            if(cmd.includes("maliyet") || cmd.includes("kaç para") || cmd.includes("kar")) {
+                toggleCostPanel();
+                const total = document.getElementById('total-cost-display').innerText;
+                await speak("Hemen bakalım. Şu anki toplam maliyetimiz " + total + " patron. Bereketli olsun!");
+                stopAI();
+                return;
+            }
+
+            // 5. Veri Girişi (Spesifik satır)
+            if(cmd.includes("satır") || cmd.includes("veri gir")) {
+                let rowNum = cmd.replace(/[^0-9]/g, '') || "1";
+                const row = document.querySelector(`#table-body tr:nth-child(${rowNum})`);
+                if(row) {
+                    await speak(rowNum + ". satırı dolduralım. Sırasıyla bilgileri söyle patron.");
+                    startRowVoiceInput(row);
+                }
+                return;
+            }
+
+            // 6. Çıkış / Kapatma
+            if(cmd.includes("kapat") || cmd.includes("dur") || cmd.includes("iptal")) {
+                await speak("Anlaşıldı patron, sistem beklemede.");
+                stopAI();
+                return;
+            }
+
+            // Anlaşılmadıysa
+            await speak("Bunu tam anlayamadım patron. Tekrar söyler misin veya butona bas?");
+            stopAI();
+        }
+
+        function stopAI() {
+            isAILending = false;
+            document.getElementById('ai-trigger').classList.remove('ai-pulse');
+        }
+
+        async function startRowVoiceInput(row) {
+            const inputs = row.querySelectorAll('input, select');
+            for(let i=0; i < config.columns.length; i++) {
+                const col = config.columns[i];
+                inputs[i].classList.add('voice-active');
+                
+                let prompt = col.name;
+                if(inputs[i].tagName === 'SELECT') {
+                    const opts = Array.from(inputs[i].options).filter(o => o.text !== "");
+                    prompt += ". Şu seçeneklerden birini söyle: " + opts.map((o, idx) => (idx+1) + " " + o.text).join(", ");
+                }
+                
+                await speak(prompt);
+                playBeep();
+                
+                let result = await getVoiceInput();
+                if(result) {
+                    if(inputs[i].tagName === 'SELECT') {
+                        const opts = Array.from(inputs[i].options).filter(o => o.text !== "");
+                        const index = parseInt(result.replace(/[^0-9]/g, ''));
+                        if(index > 0 && index <= opts.length) inputs[i].selectedIndex = opts[index-1].index;
+                        else opts.forEach(o => { if(o.text.toLowerCase().includes(result)) inputs[i].selectedIndex = o.index; });
+                    } else {
+                        inputs[i].value = result;
+                    }
+                    handleInputChange(inputs[i]);
+                }
+                inputs[i].classList.remove('voice-active');
+            }
+            await speak("Satırı başarıyla tamamladık patron. Başka bir emrin var mı?");
+            stopAI();
+        }
+
+        async function getVoiceInput() {
+            return new Promise(resolve => {
+                recognition.start();
+                recognition.onresult = (e) => resolve(e.results[0][0].transcript.toLowerCase());
+                recognition.onerror = () => resolve(null);
+            });
+        }
+
+        // --- SİSTEM ÇEKİRDEĞİ ---
         window.onload = async () => {
             document.getElementById('current-date').innerText = new Date().toLocaleDateString('tr-TR');
             const snap = await get(ref(db, 'ayarlar/form_duzeni'));
@@ -161,194 +314,6 @@
             body.insertAdjacentHTML('beforeend', r + `</tr>`);
         }
 
-        // --- AKILLI ASİSTAN MOTORU ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
-        if(recognition) {
-            recognition.lang = 'tr-TR';
-            recognition.continuous = false;
-        }
-
-        async function speak(text) {
-            return new Promise(resolve => {
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'tr-TR';
-                const voices = window.speechSynthesis.getVoices();
-                // Erkek sesi seçmeye çalış
-                const male = voices.find(v => v.name.includes('Male') || v.name.includes('Tolga') || v.name.includes('Deniz'));
-                if(male) utter.voice = male;
-                utter.pitch = 0.8;
-                utter.onend = resolve;
-                window.speechSynthesis.speak(utter);
-            });
-        }
-
-        function playBeep() {
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            osc.connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
-        }
-
-        window.toggleSmartAssistant = async function() {
-            if(isAssistantActive) return;
-            isAssistantActive = true;
-            const btn = document.getElementById('ai-trigger');
-            btn.classList.add('ai-pulse');
-
-            await speak("Buyur patron, ne yapalım? İstersen bir sipariş getireyim, istersen yeni veri girelim.");
-            startListening();
-        }
-
-        function startListening() {
-            playBeep();
-            recognition.start();
-            
-            let silenceTimer = setTimeout(() => {
-                recognition.stop();
-                handleSilence();
-            }, 6000);
-
-            recognition.onresult = async (event) => {
-                clearTimeout(silenceTimer);
-                const command = event.results[0][0].transcript.toLowerCase();
-                await processCommand(command);
-            };
-
-            recognition.onerror = () => {
-                clearTimeout(silenceTimer);
-                handleSilence();
-            };
-        }
-
-        async function handleSilence() {
-            await speak("Patron? Orada mısın? Duymadım, tekrarla istersen.");
-            startListening();
-        }
-
-        async function processCommand(cmd) {
-            console.log("Komut:", cmd);
-
-            // 1. PDF OLUŞTURMA
-            if(cmd.includes("pdf") || cmd.includes("kaydet") || cmd.includes("oluştur")) {
-                await speak("Hemen PDF hazırlayıp kaydediyorum patron.");
-                saveAndDownload();
-                return;
-            }
-
-            // 2. WHATSAPP
-            if(cmd.includes("whatsapp") || cmd.includes("paylaş") || cmd.includes("gönder")) {
-                await speak("WhatsApp için hazırlıyorum.");
-                saveAndShareWhatsApp();
-                return;
-            }
-
-            // 3. SİPARİŞ BULMA
-            if(cmd.includes("sipariş bul") || cmd.includes("getir") || cmd.includes("nolu")) {
-                let num = cmd.replace(/[^0-9]/g, '');
-                if(num) {
-                    document.getElementById('search-order-no').value = num;
-                    await speak(num + " numaralı siparişi getiriyorum.");
-                    fetchOrder();
-                } else {
-                    await speak("Hangi numara patron? Onu söylemedin.");
-                    startListening();
-                }
-                return;
-            }
-
-            // 4. VERİ GİRİŞİ (Örnek: "5. satıra veri gir")
-            if(cmd.includes("veri gir") || cmd.includes("satır")) {
-                let rowIdx = cmd.replace(/[^0-9]/g, '');
-                if(rowIdx) {
-                    const row = document.querySelector(`#table-body tr:nth-child(${rowIdx})`);
-                    if(row) {
-                        await speak(rowIdx + ". satır için seni dinliyorum. Sırayla söyle.");
-                        startRowAssistant(row);
-                    }
-                } else {
-                    await speak("Hangi satıra yazalım patron?");
-                    startListening();
-                }
-                return;
-            }
-
-            // 5. MALİYET GÖR
-            if(cmd.includes("maliyet") || cmd.includes("kaç para")) {
-                toggleCostPanel();
-                const total = document.getElementById('total-cost-display').innerText;
-                await speak("Şu anki toplam maliyetimiz tam " + total + ". Bereketli olsun patron, zengin oluyoruz!");
-                stopAssistant();
-                return;
-            }
-
-            // 6. İPTAL / KAPAT
-            if(cmd.includes("kapat") || cmd.includes("dur") || cmd.includes("tamam")) {
-                await speak("Tamam patron, ben buralardayım. Bir şey lazım olursa butona basarsın.");
-                stopAssistant();
-                return;
-            }
-
-            // ANLAŞILMADI
-            await speak("Bunu henüz öğrenemedim patron. Başka bir şey yapalım mı?");
-            startListening();
-        }
-
-        function stopAssistant() {
-            isAssistantActive = false;
-            document.getElementById('ai-trigger').classList.remove('ai-pulse');
-        }
-
-        // --- SATIR ÖZEL ASİSTANI (Numaralı Seçim Dahil) ---
-        async function startRowAssistant(row) {
-            const inputs = row.querySelectorAll('input, select');
-            for(let i=0; i<config.columns.length; i++) {
-                inputs[i].classList.add('voice-active');
-                const col = config.columns[i];
-                let prompt = col.name;
-
-                if(inputs[i].tagName === 'SELECT') {
-                    const opts = Array.from(inputs[i].options).filter(o => o.text !== "");
-                    prompt += ". Seçenekler: " + opts.map((o, idx) => (idx+1) + " " + o.text).join(", ");
-                }
-
-                await speak(prompt);
-                playBeep();
-                
-                let voiceResult = await getVoiceInput();
-                if(voiceResult) {
-                    if(inputs[i].tagName === 'SELECT') {
-                        const opts = Array.from(inputs[i].options).filter(o => o.text !== "");
-                        const num = parseInt(voiceResult.replace(/[^0-9]/g, ''));
-                        if(num > 0 && num <= opts.length) {
-                            inputs[i].selectedIndex = opts[num-1].index;
-                        } else {
-                            // Metinle eşleşme
-                            opts.forEach(o => { if(o.text.toLowerCase().includes(voiceResult)) inputs[i].selectedIndex = o.index; });
-                        }
-                    } else {
-                        inputs[i].value = voiceResult;
-                    }
-                    handleInputChange(inputs[i]);
-                }
-                inputs[i].classList.remove('voice-active');
-            }
-            
-            // Satır sonu esprisi
-            if(Math.random() > 0.6) await speak("Ooo, bu sipariş büyükmüş. Kasayı hazırla patron!");
-            await speak("Satır bitti. Başka bir emrin var mı?");
-            startListening();
-        }
-
-        async function getVoiceInput() {
-            return new Promise(resolve => {
-                recognition.start();
-                recognition.onresult = (e) => resolve(e.results[0][0].transcript.toLowerCase());
-                recognition.onerror = () => resolve(null);
-            });
-        }
-
-        // --- DİĞER FONKSİYONLAR ---
         window.handleInputChange = function(el) {
             if(el.closest('tr') === document.getElementById('table-body').lastElementChild && el.value !== "") addRow();
             calculateAllMaliyetler();
@@ -370,8 +335,7 @@
                 recipes.forEach(recipe => {
                     if (recipe.kosulGruplari) {
                         recipe.kosulGruplari.forEach(grup => {
-                            const userVal = rowData[grup.baslik];
-                            if (userVal == grup.deger || grup.deger === "ANY") {
+                            if (rowData[grup.baslik] == grup.deger || grup.deger === "ANY") {
                                 let formulaStr = "";
                                 grup.tokens.forEach(t => { formulaStr += (t.type === 'formula' ? (parseFloat(rowData[t.val]) || 0) : t.val); });
                                 try {
@@ -386,14 +350,16 @@
                 });
                 if (rowTotalMaliyet > 0) {
                     totalGeneral += rowTotalMaliyet;
-                    rowCostsContainer.innerHTML += `<div class="flex justify-between border-b border-slate-800 pb-1"><span>Sıra ${index+1}:</span><span class="font-bold text-indigo-300">${rowTotalMaliyet.toFixed(2)} TL</span></div>`;
+                    rowCostsContainer.innerHTML += `<div class="flex justify-between border-b border-slate-800 pb-1"><span>Sıra ${index+1}:</span><span class="font-bold text-red-400">${rowTotalMaliyet.toFixed(2)} TL</span></div>`;
                 }
             });
             document.getElementById('total-cost-display').innerText = totalGeneral.toFixed(2) + " TL";
         }
 
         window.fetchOrder = async function() {
-            const no = document.getElementById('search-order-no').value.padStart(5, '0');
+            const noVal = document.getElementById('search-order-no').value;
+            if(!noVal) return;
+            const no = noVal.padStart(5, '0');
             const snap = await get(ref(db, 'siparisler/' + no));
             if(!snap.exists()) return;
             const data = snap.val();
@@ -455,9 +421,23 @@
             document.getElementById('form-number').innerText = (n + 1).toString().padStart(5, '0');
         }
 
-        window.saveDraft = function() { /* Form verilerini localStorage'a kaydetme mantığı */ }
-        function loadDraft() { /* localStorage'dan veri yükleme mantığı */ }
-
+        window.saveDraft = () => {
+            const data = { 
+                n: document.getElementById('customer-name').value, 
+                t: document.getElementById('customer-phone').value,
+                s: document.getElementById('grand-total-sale').value
+            };
+            localStorage.setItem('ada_draft', JSON.stringify(data));
+        };
+        
+        function loadDraft() {
+            const d = JSON.parse(localStorage.getItem('ada_draft'));
+            if(d) {
+                document.getElementById('customer-name').value = d.n || "";
+                document.getElementById('customer-phone').value = d.t || "";
+                document.getElementById('grand-total-sale').value = d.s || "";
+            }
+        }
     </script>
 </body>
 </html>
