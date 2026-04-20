@@ -198,93 +198,124 @@
             body.insertAdjacentHTML('beforeend', r + `</tr>`);
         }
 
-        // --- SESLİ GİRİŞ SİSTEMİ (Gelişmiş Açılır Liste ve Hata Kontrollü) ---
+        // --- GELİŞMİŞ SESLİ ASİSTAN SİSTEMİ ---
         window.startVoiceEntry = function(btn) {
             const row = btn.closest('tr');
-            const inputs = row.querySelectorAll('input, select');
+            let inputs = row.querySelectorAll('input, select');
             let currentIndex = 0;
+            let isRowFinished = false;
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Tarayıcınız ses tanımayı desteklemiyor.");
-                return;
-            }
+            if (!SpeechRecognition) return alert("Tarayıcı desteklenmiyor.");
 
             const recognition = new SpeechRecognition();
             recognition.lang = 'tr-TR';
             recognition.interimResults = false;
 
-            function askQuestion() {
+            async function speak(text) {
+                return new Promise(resolve => {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'tr-TR';
+                    utter.rate = 1.2;
+                    utter.onend = resolve;
+                    window.speechSynthesis.speak(utter);
+                });
+            }
+
+            async function processStep() {
                 if (currentIndex >= config.columns.length) {
-                    speak("Satır tamamlandı.");
+                    isRowFinished = true;
                     inputs.forEach(i => i.classList.remove('voice-active'));
+                    await speak("Satır bitti. Diğer satıra geçeyim mi?");
+                    recognition.start(); // Evet/Hayır cevabı için dinle
                     return;
                 }
 
                 inputs.forEach(i => i.classList.remove('voice-active'));
                 inputs[currentIndex].classList.add('voice-active');
                 
-                speak(config.columns[currentIndex].name);
-                setTimeout(() => { recognition.start(); }, 1000);
+                await speak(config.columns[currentIndex].name);
+                recognition.start();
             }
 
-            recognition.onresult = (event) => {
-                let result = event.results[0][0].transcript.toLowerCase().replace('.', '').trim();
+            recognition.onresult = async (event) => {
+                let result = event.results[0][0].transcript.toLowerCase().trim();
+                
+                // Genel Komutlar
+                if (result.includes("durdur") || result.includes("iptal")) {
+                    await speak("İşlem iptal edildi.");
+                    inputs.forEach(i => i.classList.remove('voice-active'));
+                    return;
+                }
+
+                // Satır Sonu Kontrolü
+                if (isRowFinished) {
+                    if (result.includes("evet") || result.includes("geç")) {
+                        if (row.nextElementSibling) {
+                            startVoiceEntry(row.nextElementSibling.querySelector('button'));
+                        } else {
+                            addRow();
+                            setTimeout(() => {
+                                const nextRow = row.parentElement.lastElementChild;
+                                startVoiceEntry(nextRow.querySelector('button'));
+                            }, 300);
+                        }
+                    } else {
+                        await speak("Sesli giriş durduruldu.");
+                    }
+                    return;
+                }
+
+                // Geç Komutu
+                if (result === "geç" || result === "boş") {
+                    currentIndex++;
+                    processStep();
+                    return;
+                }
+
                 const currentInput = inputs[currentIndex];
 
                 if (currentInput.tagName === 'SELECT') {
-                    // --- AÇILIR LİSTEDE AKILLI ARAMA ---
+                    let options = Array.from(currentInput.options).filter(o => o.text !== "");
                     let foundIndex = -1;
-                    const options = currentInput.options;
                     
-                    for (let i = 0; i < options.length; i++) {
-                        const optText = options[i].text.toLowerCase();
-                        if (optText !== "" && (optText.includes(result) || result.includes(optText))) {
-                            foundIndex = i;
-                            break;
-                        }
-                    }
+                    options.forEach((opt, idx) => {
+                        const val = opt.text.toLowerCase();
+                        if (val === result || result.includes(val)) foundIndex = currentInput.options.selectedIndex = opt.index;
+                    });
 
                     if (foundIndex !== -1) {
-                        currentInput.selectedIndex = foundIndex;
+                        handleInputChange(currentInput);
+                        currentIndex++;
+                        processStep();
                     } else {
-                        // Veri bulunamadı hatası
-                        speak("Anlaşılmadı, listede " + result + " yok.");
-                        setTimeout(askQuestion, 1500); 
-                        return;
+                        let listesi = options.map(o => o.text).join(", ");
+                        await speak("Anlaşılamadı. Seçenekler şunlar: " + listesi + ". Tekrar söyler misin?");
+                        recognition.start();
                     }
                 } else {
-                    // --- NORMAL INPUT (Sayı temizleme dahil) ---
                     if(config.columns[currentIndex].type === 'number') {
                         result = result.replace(/[^0-9]/g, '');
                     }
-                    
-                    if (result === "") {
-                         speak("Anlaşılmadı.");
-                         setTimeout(askQuestion, 1200);
-                         return;
+
+                    if (result === "" || result === "anlaşılmadı") {
+                        await speak("Anlaşılmadı, tekrarla.");
+                        recognition.start();
+                    } else {
+                        currentInput.value = result;
+                        handleInputChange(currentInput);
+                        currentIndex++;
+                        processStep();
                     }
-                    currentInput.value = result;
                 }
-
-                handleInputChange(currentInput);
-                currentIndex++;
-                setTimeout(askQuestion, 500);
             };
 
-            recognition.onerror = (err) => {
-                speak("Anlaşılmadı.");
-                setTimeout(askQuestion, 1200);
+            recognition.onerror = async () => {
+                await speak("Anlaşılmadı.");
+                recognition.start();
             };
 
-            function speak(text) {
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'tr-TR';
-                utter.rate = 1.2; // Biraz daha seri konuşma
-                window.speechSynthesis.speak(utter);
-            }
-
-            askQuestion();
+            processStep();
         };
 
         window.handleInputChange = function(el) {
