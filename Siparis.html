@@ -18,8 +18,9 @@
         .align-right { text-align: right; }
         #cost-sidebar { position: fixed; right: 20px; top: 100px; width: 280px; z-index: 50; transition: transform 0.3s ease; }
         #cost-sidebar.hidden-panel { transform: translateX(320px); }
-        .voice-active { background-color: #fee2e2 !important; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        /* Ses aktifken hücrenin parlaması için */
+        .voice-active { background-color: #fee2e2 !important; animation: pulse 1.5s infinite; border-radius: 4px; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="bg-slate-200 p-2 md:p-6">
@@ -157,7 +158,6 @@
 
             const head = document.getElementById('table-head');
             let noWidth = config.noColumnWidth || 12;
-            // SES SÜTUNU EKLENDİ
             let h = `<tr><th class="no-print" style="width: 10mm; text-align:center">🎙️</th><th style="width: ${noWidth}mm; text-align:center">NO</th>`;
             config.columns.forEach(c => {
                 h += `<th style="width:${c.width}%; text-align:${c.align}; text-transform:uppercase">${c.name}</th>`;
@@ -173,7 +173,6 @@
             const rowNo = body.rows.length + 1;
             if(rowNo > 35) return;
 
-            // SES BUTONU SATIRA EKLENDİ
             let r = `<tr>
                 <td class="no-print" style="text-align:center">
                     <button onclick="startVoiceEntry(this)" class="text-indigo-600 hover:scale-125 transition-transform">
@@ -200,7 +199,7 @@
             body.insertAdjacentHTML('beforeend', r + `</tr>`);
         }
 
-        // --- SESLİ GİRİŞ SİSTEMİ ---
+        // --- SESLİ GİRİŞ SİSTEMİ (AKILLI SELECT DESTEKLİ) ---
         window.startVoiceEntry = function(btn) {
             const row = btn.closest('tr');
             const inputs = row.querySelectorAll('input, select');
@@ -218,7 +217,7 @@
 
             function askQuestion() {
                 if (currentIndex >= config.columns.length) {
-                    speak("Satır bitti.");
+                    speak("Satır tamamlandı.");
                     inputs.forEach(i => i.classList.remove('voice-active'));
                     return;
                 }
@@ -227,6 +226,7 @@
                 inputs[currentIndex].classList.add('voice-active');
                 
                 speak(config.columns[currentIndex].name);
+                // Ses bittikten sonra dinlemeye başla
                 setTimeout(() => { recognition.start(); }, 1000);
             }
 
@@ -234,16 +234,36 @@
                 let result = event.results[0][0].transcript.toLowerCase().replace('.', '').trim();
                 const currentInput = inputs[currentIndex];
 
-                // Sayısal alanlar için düzeltme (Örn: "seksen" -> "80")
-                if(config.columns[currentIndex].type === 'number') {
-                    result = result.replace(/ /g, '');
+                if (currentInput.tagName === 'SELECT') {
+                    // --- SELECT LİSTESİNDE ARA ---
+                    let foundIndex = -1;
+                    const options = currentInput.options;
+                    for (let i = 0; i < options.length; i++) {
+                        const optText = options[i].text.toLowerCase();
+                        if (optText.includes(result) || result.includes(optText)) {
+                            foundIndex = i;
+                            break;
+                        }
+                    }
+
+                    if (foundIndex !== -1) {
+                        currentInput.selectedIndex = foundIndex;
+                    } else {
+                        speak(result + " listede bulunamadı.");
+                        setTimeout(askQuestion, 1500);
+                        return;
+                    }
+                } else {
+                    // --- INPUT ALANI ---
+                    if(config.columns[currentIndex].type === 'number') {
+                        result = result.replace(/[^0-9]/g, ''); // Sayı dışındakileri temizle
+                    }
+                    currentInput.value = result;
                 }
 
-                currentInput.value = result;
                 handleInputChange(currentInput);
-
                 currentIndex++;
-                askQuestion();
+                setTimeout(askQuestion, 500);
             };
 
             recognition.onerror = (err) => {
@@ -256,6 +276,7 @@
             function speak(text) {
                 const utter = new SpeechSynthesisUtterance(text);
                 utter.lang = 'tr-TR';
+                utter.rate = 1.1;
                 window.speechSynthesis.speak(utter);
             }
 
@@ -384,70 +405,4 @@
             const no = noVal.padStart(5, '0');
             try {
                 const snap = await get(ref(db, 'siparisler/' + no));
-                if(!snap.exists()) return alert("Sipariş bulunamadı!");
-                const data = snap.val();
-                isEditMode = true;
-                document.getElementById('edit-mode-badge').classList.remove('hidden');
-                document.getElementById('form-number').innerText = no;
-                document.getElementById('customer-name').value = data.form_bilgileri.musteri_ad || "";
-                document.getElementById('customer-phone').value = data.form_bilgileri.musteri_tel || "";
-                document.getElementById('grand-total-sale').value = data.form_bilgileri.toplam_satis_fiyati || "0.00";
-                const body = document.getElementById('table-body');
-                body.innerHTML = "";
-                data.siparis_icerigi.forEach((row) => {
-                    addRow();
-                    const tr = body.lastElementChild;
-                    const inputs = tr.querySelectorAll('input, select');
-                    config.columns.forEach((col, i) => {
-                        if(row[col.name]) inputs[i].value = row[col.name];
-                    });
-                });
-                calculateAllMaliyetler();
-            } catch (e) { alert("Hata!"); }
-        }
-
-        async function performSave() {
-            const no = document.getElementById('form-number').innerText.trim();
-            const customerName = document.getElementById('customer-name').value || "İsimsiz";
-            const totalMaliyet = document.getElementById('total-cost-display').innerText;
-            const totalSale = document.getElementById('grand-total-sale').value || "0.00";
-            const rows = Array.from(document.querySelectorAll('#table-body tr')).map((tr, index) => {
-                const inputs = Array.from(tr.querySelectorAll('input, select'));
-                const rowData = {};
-                let hasValue = false;
-                config.columns.forEach((col, i) => {
-                    if(inputs[i] && inputs[i].value) {
-                        hasValue = true;
-                        rowData[col.name] = inputs[i].value;
-                    }
-                });
-                return hasValue ? { satir_no: index + 1, ...rowData } : null;
-            }).filter(r => r !== null);
-            if (rows.length === 0) return alert("Boş form!");
-            await set(ref(db, 'siparisler/' + no), {
-                form_bilgileri: { form_no: no, tarih: new Date().toLocaleString('tr-TR'), musteri_ad: customerName, musteri_tel: document.getElementById('customer-phone').value, toplam_maliyet: totalMaliyet, toplam_satis_fiyati: totalSale },
-                siparis_icerigi: rows
-            });
-            localStorage.removeItem('ada_sineklik_draft');
-            return { no, customerName };
-        }
-
-        window.saveAndShareWhatsApp = async function() {
-            const saved = await performSave();
-            if(!saved) return;
-            const element = document.getElementById('order-form');
-            const opt = { margin: 0, filename: `${saved.no}.pdf`, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-            const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-            const file = new File([pdfBlob], `${saved.no}.pdf`, { type: 'application/pdf' });
-            if (navigator.share) await navigator.share({ files: [file] });
-        }
-
-        window.saveAndDownload = async function() {
-            const saved = await performSave();
-            if (!saved) return;
-            const opt = { margin: 0, filename: `${saved.no}.pdf`, html2canvas: { scale: 3 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-            html2pdf().set(opt).from(document.getElementById('order-form')).save().then(() => location.reload());
-        }
-    </script>
-</body>
-</html>
+                if(!snap.exists()) return
