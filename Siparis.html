@@ -198,12 +198,13 @@
             body.insertAdjacentHTML('beforeend', r + `</tr>`);
         }
 
-        // --- GELİŞMİŞ SESLİ ASİSTAN SİSTEMİ ---
+        // --- SESLİ ASİSTAN SİSTEMİ v3 (Numaralı ve Esprili) ---
         window.startVoiceEntry = function(btn) {
             const row = btn.closest('tr');
             let inputs = row.querySelectorAll('input, select');
             let currentIndex = 0;
             let isRowFinished = false;
+            let timeoutTrigger;
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) return alert("Tarayıcı desteklenmiyor.");
@@ -212,61 +213,106 @@
             recognition.lang = 'tr-TR';
             recognition.interimResults = false;
 
+            const jokes = [
+                "Ooo patron, bu sineklik büyükmüş. Zengin olduk!",
+                "Bu ölçüleri görünce gözlerim yaşardı, çok asil bir sineklik olacak.",
+                "Hadi bakalım, fabrikayı bu siparişle büyüteceğiz herhalde.",
+                "Bu gidişle mahalledeki tüm pencereleri kapatacağız patron!",
+                "Maşallah, ellerine sağlık şimdiden."
+            ];
+
+            function playBeep() {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            }
+
             async function speak(text) {
                 return new Promise(resolve => {
                     const utter = new SpeechSynthesisUtterance(text);
                     utter.lang = 'tr-TR';
-                    utter.rate = 1.2;
+                    // Erkek sesi bulmaya çalış
+                    const voices = window.speechSynthesis.getVoices();
+                    const maleVoice = voices.find(v => v.lang === 'tr-TR' && (v.name.includes('Male') || v.name.includes('Deniz') || v.name.includes('Tolga')));
+                    if (maleVoice) utter.voice = maleVoice;
+                    
+                    utter.pitch = 0.8; // Sesi biraz daha kalınlaştır (Erkeksi ton)
+                    utter.rate = 1.1;
                     utter.onend = resolve;
                     window.speechSynthesis.speak(utter);
                 });
             }
 
             async function processStep() {
+                clearTimeout(timeoutTrigger);
                 if (currentIndex >= config.columns.length) {
                     isRowFinished = true;
                     inputs.forEach(i => i.classList.remove('voice-active'));
-                    await speak("Satır bitti. Diğer satıra geçeyim mi?");
-                    recognition.start(); // Evet/Hayır cevabı için dinle
+                    
+                    // Şaka yapma şansı %30
+                    if (Math.random() > 0.7) await speak(jokes[Math.floor(Math.random() * jokes.length)]);
+                    
+                    await speak("Satır tamam. Diğer satıra geçelim mi patron?");
+                    playBeep();
+                    recognition.start();
+                    startTimeoutTimer();
                     return;
                 }
 
                 inputs.forEach(i => i.classList.remove('voice-active'));
                 inputs[currentIndex].classList.add('voice-active');
                 
-                await speak(config.columns[currentIndex].name);
+                const col = config.columns[currentIndex];
+                let promptText = col.name;
+
+                if (inputs[currentIndex].tagName === 'SELECT') {
+                    const options = Array.from(inputs[currentIndex].options).filter(o => o.text !== "");
+                    let optText = options.map((o, index) => (index + 1) + ": " + o.text).join(", ");
+                    promptText += ". Şu numaralardan birini söyle: " + optText;
+                }
+
+                await speak(promptText);
+                playBeep();
                 recognition.start();
+                startTimeoutTimer();
+            }
+
+            function startTimeoutTimer() {
+                timeoutTrigger = setTimeout(async () => {
+                    recognition.stop();
+                    await speak("Orada mısın patron? Duymadım.");
+                    processStep();
+                }, 7000); // 5 saniye bekleme + işlem payı
             }
 
             recognition.onresult = async (event) => {
+                clearTimeout(timeoutTrigger);
                 let result = event.results[0][0].transcript.toLowerCase().trim();
                 
-                // Genel Komutlar
                 if (result.includes("durdur") || result.includes("iptal")) {
-                    await speak("İşlem iptal edildi.");
+                    await speak("Tamam patron, dinleniyorum.");
                     inputs.forEach(i => i.classList.remove('voice-active'));
                     return;
                 }
 
-                // Satır Sonu Kontrolü
                 if (isRowFinished) {
-                    if (result.includes("evet") || result.includes("geç")) {
+                    if (result.includes("evet") || result.includes("geç") || result.includes("bir") || result === "1") {
                         if (row.nextElementSibling) {
                             startVoiceEntry(row.nextElementSibling.querySelector('button'));
                         } else {
                             addRow();
-                            setTimeout(() => {
-                                const nextRow = row.parentElement.lastElementChild;
-                                startVoiceEntry(nextRow.querySelector('button'));
-                            }, 300);
+                            setTimeout(() => startVoiceEntry(row.parentElement.lastElementChild.querySelector('button')), 300);
                         }
                     } else {
-                        await speak("Sesli giriş durduruldu.");
+                        await speak("Tamam, buradayım ben.");
                     }
                     return;
                 }
 
-                // Geç Komutu
                 if (result === "geç" || result === "boş") {
                     currentIndex++;
                     processStep();
@@ -276,31 +322,38 @@
                 const currentInput = inputs[currentIndex];
 
                 if (currentInput.tagName === 'SELECT') {
-                    let options = Array.from(currentInput.options).filter(o => o.text !== "");
+                    const options = Array.from(currentInput.options).filter(o => o.text !== "");
                     let foundIndex = -1;
                     
-                    options.forEach((opt, idx) => {
-                        const val = opt.text.toLowerCase();
-                        if (val === result || result.includes(val)) foundIndex = currentInput.options.selectedIndex = opt.index;
-                    });
+                    // Numaralı eşleştirme (1, 2, 3...)
+                    const numberMap = {"bir":1, "iki":2, "üç":3, "dört":4, "beş":5, "altı":6, "yedi":7, "sekiz":8, "dokuz":9, "on":10};
+                    let voiceNum = numberMap[result] || parseInt(result);
+
+                    if (voiceNum > 0 && voiceNum <= options.length) {
+                        foundIndex = options[voiceNum - 1].index;
+                    } else {
+                        // İsimle eşleştirme
+                        options.forEach(opt => {
+                            if (opt.text.toLowerCase().includes(result)) foundIndex = opt.index;
+                        });
+                    }
 
                     if (foundIndex !== -1) {
+                        currentInput.selectedIndex = foundIndex;
                         handleInputChange(currentInput);
                         currentIndex++;
                         processStep();
                     } else {
-                        let listesi = options.map(o => o.text).join(", ");
-                        await speak("Anlaşılamadı. Seçenekler şunlar: " + listesi + ". Tekrar söyler misin?");
-                        recognition.start();
+                        await speak("Dediğini anlamadım. Tekrar söyler misin?");
+                        processStep();
                     }
                 } else {
                     if(config.columns[currentIndex].type === 'number') {
                         result = result.replace(/[^0-9]/g, '');
                     }
-
-                    if (result === "" || result === "anlaşılmadı") {
-                        await speak("Anlaşılmadı, tekrarla.");
-                        recognition.start();
+                    if (result === "") {
+                        await speak("Boş kaldı sanırım, tekrar söyler misin?");
+                        processStep();
                     } else {
                         currentInput.value = result;
                         handleInputChange(currentInput);
@@ -310,9 +363,10 @@
                 }
             };
 
-            recognition.onerror = async () => {
-                await speak("Anlaşılmadı.");
-                recognition.start();
+            recognition.onerror = () => {
+                clearTimeout(timeoutTrigger);
+                // Sessiz kalsa bile döngüye devam et
+                processStep();
             };
 
             processStep();
