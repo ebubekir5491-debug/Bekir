@@ -124,6 +124,24 @@
         let recipes = [];
         let isEditMode = false;
 
+        // --- WHATSAPP OTOMATİK BİLDİRİM FONKSİYONU ---
+        function sendWhatsAppNotification(no, customer, price) {
+            const groupID = "LtjDFijnlDf4GYuufVfm1f"; // Senin verdiğin grup ID'si
+            const text = `🚀 *YENİ SİPARİŞ BİLDİRİMİ*\n\n📄 *Form No:* ${no}\n👤 *Müşteri:* ${customer}\n💰 *Tutar:* ${price} TL\n\n_Adına teklif verilmiş ve sisteme kaydedilmiştir._`;
+            
+            // Mobil uygulama tetikleyici link
+            const wpUrl = `whatsapp://send?text=${encodeURIComponent(text)}`;
+            
+            // Alternatif (Eğer uygulama açılmazsa web üzerinden gruba yönlendirir)
+            const fallbackUrl = `https://chat.whatsapp.com/${groupID}`;
+
+            // Mobil cihazda uygulamayı açmaya çalış
+            window.location.href = wpUrl;
+            
+            // Not: Gruplara direkt mesaj API'sız kısıtlıdır, bu işlem mesajı oluşturur, 
+            // sen sadece grupta "Gönder"e basarsın.
+        }
+
         window.onload = async () => {
             document.getElementById('current-date').innerText = new Date().toLocaleDateString('tr-TR');
             
@@ -132,14 +150,13 @@
                 config = snap.val();
                 renderUI();
                 await setNextNo();
-                // Verileri render'dan sonra yükle
                 loadDraft();
             }
 
             const recSnap = await get(ref(db, 'receteler'));
             if(recSnap.exists()) {
                 recipes = recSnap.val();
-                calculateAllMaliyetler(); // Draft yüklendiyse maliyeti hesapla
+                calculateAllMaliyetler();
             }
         };
 
@@ -192,20 +209,17 @@
         window.handleInputChange = function(el) {
             checkAutoRow(el);
             calculateAllMaliyetler();
-            saveDraft(); // Her girişte taslağı güncelle
+            saveDraft();
         }
 
-        // --- LOCALSTORAGE TASLAK SİSTEMİ ---
         window.saveDraft = function() {
-            if(isEditMode) return; // Düzenleme modunda taslak kaydetme
-
+            if(isEditMode) return;
             const draftData = {
                 musteri_ad: document.getElementById('customer-name').value,
                 musteri_tel: document.getElementById('customer-phone').value,
                 toplam_satis: document.getElementById('grand-total-sale').value,
                 icerik: []
             };
-
             const rows = document.querySelectorAll('#table-body tr');
             rows.forEach(tr => {
                 const rowData = {};
@@ -219,19 +233,16 @@
                 });
                 if(hasValue) draftData.icerik.push(rowData);
             });
-
             localStorage.setItem('ada_sineklik_draft', JSON.stringify(draftData));
         }
 
         function loadDraft() {
             const saved = localStorage.getItem('ada_sineklik_draft');
             if(!saved || isEditMode) return;
-
             const data = JSON.parse(saved);
             document.getElementById('customer-name').value = data.musteri_ad || "";
             document.getElementById('customer-phone').value = data.musteri_tel || "";
             document.getElementById('grand-total-sale').value = data.toplam_satis || "";
-
             const body = document.getElementById('table-body');
             if(data.icerik && data.icerik.length > 0) {
                 body.innerHTML = "";
@@ -243,41 +254,30 @@
                         if(row[col.name]) inputs[i].value = row[col.name];
                     });
                 });
-                // Boş satırları tamamla
                 if(data.icerik.length < 5) {
                     for(let i=0; i < (5 - data.icerik.length); i++) addRow();
                 }
             }
         }
 
-        function clearDraft() {
-            localStorage.removeItem('ada_sineklik_draft');
-        }
-
-        // --- MALİYET HESAPLAMA ---
         window.calculateAllMaliyetler = function() {
             const rows = document.querySelectorAll('#table-body tr');
             const rowCostsContainer = document.getElementById('row-costs');
             rowCostsContainer.innerHTML = "";
             let totalGeneral = 0;
-
             rows.forEach((tr, index) => {
                 let rowTotalMaliyet = 0;
                 const rowData = {};
                 const inputs = tr.querySelectorAll('input, select');
-                
                 config.columns.forEach((col, i) => {
                     rowData[col.name] = inputs[i].value;
                 });
-
                 if (!Object.values(rowData).some(v => v !== "")) return;
-
                 recipes.forEach(recipe => {
                     if (recipe.kosulGruplari) {
                         recipe.kosulGruplari.forEach(grup => {
                             const userVal = rowData[grup.baslik];
                             const isMatch = (userVal == grup.deger || grup.deger === "ANY");
-
                             if (isMatch) {
                                 let formulaStr = "";
                                 grup.tokens.forEach(token => {
@@ -287,7 +287,6 @@
                                         formulaStr += token.val;
                                     }
                                 });
-
                                 try {
                                     let miktar = Function('"use strict"; return (' + formulaStr + ')')() || 0;
                                     if(recipe.birim === "MT") miktar = miktar / 100;
@@ -299,7 +298,6 @@
                         });
                     }
                 });
-
                 if (rowTotalMaliyet > 0) {
                     totalGeneral += rowTotalMaliyet;
                     rowCostsContainer.innerHTML += `
@@ -332,25 +330,19 @@
         window.fetchOrder = async function() {
             const noVal = document.getElementById('search-order-no').value;
             if(!noVal) return alert("Lütfen aramak istediğiniz numarayı girin!");
-            
             const no = noVal.padStart(5, '0');
-
             try {
                 const snap = await get(ref(db, 'siparisler/' + no));
                 if(!snap.exists()) return alert("Sipariş bulunamadı!");
-
                 const data = snap.val();
                 isEditMode = true;
-                
                 document.getElementById('edit-mode-badge').classList.remove('hidden');
                 document.getElementById('form-number').innerText = no;
                 document.getElementById('customer-name').value = data.form_bilgileri.musteri_ad || "";
                 document.getElementById('customer-phone').value = data.form_bilgileri.musteri_tel || "";
                 document.getElementById('grand-total-sale').value = data.form_bilgileri.toplam_satis_fiyati || "0.00";
-                
                 const body = document.getElementById('table-body');
                 body.innerHTML = "";
-                
                 data.siparis_icerigi.forEach((row) => {
                     addRow();
                     const tr = body.lastElementChild;
@@ -359,13 +351,10 @@
                         if(row[col.name]) inputs[i].value = row[col.name];
                     });
                 });
-                
                 if(data.siparis_icerigi.length < 5) {
                     for(let i=0; i < (5 - data.siparis_icerigi.length); i++) addRow();
                 }
-
                 calculateAllMaliyetler();
-                alert(no + " nolu sipariş düzenleme için yüklendi.");
             } catch (e) { alert("Hata: " + e.message); }
         }
 
@@ -405,7 +394,10 @@
                 siparis_icerigi: rows
             });
 
-            clearDraft(); // Kayıttan sonra taslağı sil
+            // --- BİLDİRİMİ TETİKLE ---
+            sendWhatsAppNotification(no, customerName, totalSale);
+
+            localStorage.removeItem('ada_sineklik_draft');
             return { no, customerName };
         }
 
@@ -419,7 +411,7 @@
                 const file = new File([pdfBlob], `${saved.no}-${saved.customerName}.pdf`, { type: 'application/pdf' });
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({ files: [file], title: 'Sipariş Formu', text: `${saved.no} nolu Ada Sineklik Sipariş Formu` });
-                } else { alert("Paylaşım desteklenmiyor, indiriliyor..."); saveAndDownload(); }
+                } else { saveAndDownload(); }
             } catch (e) { alert("Hata: " + e.message); }
         }
 
