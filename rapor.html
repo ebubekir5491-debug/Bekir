@@ -15,6 +15,12 @@
             body { background-color: #ffffff; padding: 0; }
             .report-container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; }
         }
+        /* Basılı tutma hissi için kullanıcı deneyimi sınıfı */
+        .selectable-row {
+            cursor: pointer;
+            -webkit-user-select: none; /* Mobil cihazlarda metin seçmeyi engeller */
+            user-select: none;
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
@@ -26,6 +32,7 @@
             <div>
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase">📊 SİPARİŞ RAPORU</h1>
                 <p class="text-sm font-medium text-slate-500 mt-1">Canlı veritabanı maliyet, ciro ve kazanç analiz paneli</p>
+                <p class="text-[11px] font-bold text-red-500 mt-1 no-print">💡 Bir siparişi silmek için satırın üzerine 1 saniye boyunca BASILI TUTUN.</p>
             </div>
             <div class="flex gap-2 w-full sm:w-auto no-print">
                 <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm">
@@ -104,9 +111,8 @@
     <!-- FIREBASE MANTIĞI -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, get, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Paylaştığınız kodlardaki Firebase Config ayarları ile birebir eşleştirildi
         const firebaseConfig = {
             apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
             authDomain: "adasineklik54-4c11c.firebaseapp.com",
@@ -121,19 +127,20 @@
         const db = getDatabase(app);
 
         let tumSiparisler = [];
+        let pressTimer = null; // Basılı tutma zamanlayıcısı
 
         window.onload = () => {
             document.getElementById('report-date').innerText = "Rapor Tarihi: " + new Date().toLocaleString('tr-TR');
             verileriYukle();
         };
 
-        // Firebase veritabanından siparişleri çeken ana fonksiyon
         async function verileriYukle() {
             const tbody = document.getElementById('report-table-body');
             try {
                 const snap = await get(ref(db, 'siparisler'));
                 if (!snap.exists()) {
                     tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Veritabanında kayıtlı sipariş bulunamadı!</td></tr>`;
+                    updateTotalsEmpty();
                     return;
                 }
 
@@ -145,7 +152,6 @@
                     if (siparis.form_bilgileri) {
                         const fb = siparis.form_bilgileri;
                         
-                        // "150.00 TL" gibi metinsel verileri JS hesaplaması için sayıya temizleme
                         let maliyetSayi = 0;
                         if (fb.toplam_maliyet) {
                             maliyetSayi = parseFloat(fb.toplam_maliyet.replace(/[^\d.,]/g, '').replace(',', '.'));
@@ -156,7 +162,6 @@
                             satisSayi = parseFloat(fb.toplam_satis_fiyati.toString().replace(/[^\d.,]/g, '').replace(',', '.'));
                         }
 
-                        // Kazanılan Net Tutar (Satış - Maliyet)
                         let kazancSayi = satisSayi - maliyetSayi;
 
                         tumSiparisler.push({
@@ -171,9 +176,7 @@
                     }
                 });
 
-                // Siparişleri numarasına göre yukarıdan aşağıya sırala (En yeni en üstte)
                 tumSiparisler.sort((a, b) => b.siparisNo.localeCompare(a.siparisNo));
-
                 tabloyuCiz(tumSiparisler);
 
             } catch (error) {
@@ -182,7 +185,6 @@
             }
         }
 
-        // Tablo satırlarını oluşturan ve genel toplam kartlarını hesaplayan fonksiyon
         function tabloyuCiz(siparisListesi) {
             const tbody = document.getElementById('report-table-body');
             tbody.innerHTML = "";
@@ -199,11 +201,16 @@
                     genelSatis += s.satis;
                     genelKazanc += s.kazanc;
 
-                    // Kar durumuna göre dinamik yazı rengi
                     const kazancClass = s.kazanc >= 0 ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
 
+                    // Satırlara basılı tutma olayları (Mousedown/Mouseup masaüstü, Touchstart/Touchend mobil için) eklendi
                     tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
+                        <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors selectable-row" 
+                            onmousedown="handlePressStart('${s.siparisNo}', '${s.musteriAd}')" 
+                            onmouseup="handlePressEnd()" 
+                            onmouseleave="handlePressEnd()"
+                            ontouchstart="handlePressStart('${s.siparisNo}', '${s.musteriAd}')" 
+                            ontouched="handlePressEnd()">
                             <td class="p-4 text-center font-mono font-bold text-red-600 bg-slate-50/50">${s.siparisNo}</td>
                             <td class="p-4">
                                 <div class="font-bold text-slate-900">${s.musteriAd}</div>
@@ -217,12 +224,10 @@
                 });
             }
 
-            // Sayfa başındaki Genel Toplam Panellerini güncelleme
             document.getElementById('total-maliyet-display').innerText = genelMaliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             document.getElementById('total-satis-display').innerText = genelSatis.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             document.getElementById('total-kazanc-display').innerText = genelKazanc.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
             
-            // Eğer net zarar varsa kazanç rengini kırmızıya çevirir
             const kazancDisplayBox = document.getElementById('total-kazanc-display');
             if (genelKazanc < 0) {
                 kazancDisplayBox.className = "text-3xl font-black text-red-500 mt-2";
@@ -235,7 +240,58 @@
             document.getElementById('record-count').innerText = siparisListesi.length;
         }
 
-        // Canlı arama filtresi
+        function updateTotalsEmpty() {
+            document.getElementById('total-maliyet-display').innerText = "0.00 TL";
+            document.getElementById('total-satis-display').innerText = "0.00 TL";
+            document.getElementById('total-kazanc-display').innerText = "0.00 TL";
+            document.getElementById('kazanc-oran-display').innerText = "Kâr Oranı / Marjı: %0";
+            document.getElementById('record-count').innerText = "0";
+        }
+
+        // --- SİLME VE BASILI TUTMA FONKSİYONLARI ---
+
+        window.handlePressStart = function(siparisNo, musteriAd) {
+            // Her ihtimale karşı eski zamanlayıcıyı temizle
+            if(pressTimer) clearTimeout(pressTimer);
+            
+            // 1000 milisaniye (1 saniye) basılı tutulursa tetiklenecek silme işlemi
+            pressTimer = setTimeout(() => {
+                siparisSilOnayla(siparisNo, musteriAd);
+            }, 1000);
+        }
+
+        window.handlePressEnd = function() {
+            // Kullanıcı elini erken çekerse veya fareden ayrılırsa zamanlayıcı iptal olur
+            if (pressTimer) clearTimeout(pressTimer);
+        }
+
+        async function siparisSilOnayla(siparisNo, musteriAd) {
+            // Basılı tutma tetiklendiğinde tarayıcının diğer tıklama eventlerini karıştırmaması için zamanlayıcıyı kapatıyoruz
+            if (pressTimer) clearTimeout(pressTimer);
+
+            const onay = confirm(`${siparisNo} nolu Siparişi (${musteriAd}) silmek istediğinize emin misiniz?`);
+            if (!onay) return;
+
+            const sifre = prompt("Bu işlem geri alınamaz. Lütfen silme şifresini girin:");
+            
+            if (sifre === null) return; // İptal edilirse çık
+
+            if (sifre === "7556") {
+                try {
+                    // Firebase'den ilgili sipariş koduna dair veriyi kaldırma
+                    await remove(ref(db, 'siparisler/' + siparisNo));
+                    alert(`${siparisNo} nolu sipariş başarıyla veritabanından silindi.`);
+                    
+                    // Listeyi ve toplam verileri canlı yenile
+                    verileriYukle();
+                } catch (error) {
+                    alert("Silme işlemi sırasında hata oluştu: " + error.message);
+                }
+            } else {
+                alert("Hatalı şifre girdiniz! Silme işlemi iptal edildi.");
+            }
+        }
+
         window.tabloyuFiltrele = function() {
             const queryText = document.getElementById('search-input').value.toLowerCase().trim();
             
