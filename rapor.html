@@ -15,11 +15,15 @@
             body { background-color: #ffffff; padding: 0; }
             .report-container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; }
         }
-        /* Basılı tutma hissi için kullanıcı deneyimi sınıfı */
-        .selectable-row {
-            cursor: pointer;
-            -webkit-user-select: none; /* Mobil cihazlarda metin seçmeyi engeller */
-            user-select: none;
+        /* Dropdown menünün taşmasını önlemek için */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            z-index: 50;
+        }
+        .dropdown-container:hover .dropdown-menu,
+        .dropdown-menu:hover {
+            display: block;
         }
     </style>
 </head>
@@ -32,7 +36,7 @@
             <div>
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase">📊 SİPARİŞ RAPORU</h1>
                 <p class="text-sm font-medium text-slate-500 mt-1">Canlı veritabanı maliyet, ciro ve kazanç analiz paneli</p>
-                <p class="text-[11px] font-bold text-red-500 mt-1 no-print">💡 Bir siparişi silmek için satırın üzerine 1 saniye boyunca BASILI TUTUN.</p>
+                <p class="text-[11px] font-bold text-red-500 mt-1 no-print">💡 Satır başındaki butonları kullanarak siparişleri silebilir veya formüllerden düşürmek için bypass edebilirsiniz.</p>
             </div>
             <div class="flex gap-2 w-full sm:w-auto no-print">
                 <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm">
@@ -44,7 +48,7 @@
             </div>
         </div>
 
-        <!-- GENEL TOPLAMLAR (SAYFA BAŞINDA GÖSTERİM) -->
+        <!-- GENEL TOPLAMLAR -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Toplam Maliyet -->
             <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-md border-b-4 border-amber-500">
@@ -84,6 +88,7 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                        <th class="p-4 text-center w-16 no-print">İşlem</th>
                         <th class="p-4 text-center w-28">Sipariş No</th>
                         <th class="p-4">Müşteri</th>
                         <th class="p-4 text-right w-44">Maliyet</th>
@@ -93,7 +98,7 @@
                 </thead>
                 <tbody id="report-table-body" class="divide-y divide-slate-100 text-sm font-medium text-slate-700">
                     <tr>
-                        <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                        <td colspan="6" class="p-8 text-center text-slate-400 italic">
                             Veritabanına bağlanılıyor ve sipariş verileri yükleniyor...
                         </td>
                     </tr>
@@ -111,7 +116,7 @@
     <!-- FIREBASE MANTIĞI -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, get, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, get, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
@@ -127,7 +132,6 @@
         const db = getDatabase(app);
 
         let tumSiparisler = [];
-        let pressTimer = null; // Basılı tutma zamanlayıcısı
 
         window.onload = () => {
             document.getElementById('report-date').innerText = "Rapor Tarihi: " + new Date().toLocaleString('tr-TR');
@@ -139,7 +143,7 @@
             try {
                 const snap = await get(ref(db, 'siparisler'));
                 if (!snap.exists()) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Veritabanında kayıtlı sipariş bulunamadı!</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Veritabanında kayıtlı sipariş bulunamadı!</td></tr>`;
                     updateTotalsEmpty();
                     return;
                 }
@@ -165,13 +169,15 @@
                         let kazancSayi = satisSayi - maliyetSayi;
 
                         tumSiparisler.push({
+                            dbKey: key, // Silme ve güncelleme işlemleri için gerçek veritabanı düğüm adı
                             siparisNo: fb.form_no || key,
                             musteriAd: fb.musteri_ad || "İsimsiz Müşteri",
                             musteriTel: fb.musteri_tel || "",
                             maliyet: maliyetSayi || 0,
                             satis: satisSayi || 0,
                             kazanc: kazancSayi || 0,
-                            tarih: fb.tarih || ""
+                            tarih: fb.tarih || "" ,
+                            bypassed: siparis.bypassed || false // Veritabanından bypass durumunu çekiyoruz
                         });
                     }
                 });
@@ -181,7 +187,7 @@
 
             } catch (error) {
                 console.error("Hata:", error);
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Veri çekilirken hata oluştu: ${error.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Veri çekilirken hata oluştu: ${error.message}</td></tr>`;
             }
         }
 
@@ -194,26 +200,44 @@
             let genelKazanc = 0;
 
             if (siparisListesi.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">Sonuç bulunamadı.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Sonuç bulunamadı.</td></tr>`;
             } else {
                 siparisListesi.forEach(s => {
-                    genelMaliyet += s.maliyet;
-                    genelSatis += s.satis;
-                    genelKazanc += s.kazanc;
+                    // Eğer bypass edilmemişse formüllere dahil et
+                    if (!s.bypassed) {
+                        genelMaliyet += s.maliyet;
+                        genelSatis += s.satis;
+                        genelKazanc += s.kazanc;
+                    }
 
                     const kazancClass = s.kazanc >= 0 ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
+                    
+                    // Bypass durumuna göre satır stili ve buton texti ayarlanır
+                    const rowClass = s.bypassed 
+                        ? "bg-red-50 hover:bg-red-100 border-b border-red-200 text-red-900 line-through decoration-red-400" 
+                        : "hover:bg-slate-50 border-b border-slate-100 transition-colors";
+                    const bypassButtonText = s.bypassed ? "🔄 Aktif Et" : "🚫 Bypass Et";
+                    const statusBadge = s.bypassed ? `<span class="inline-block bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wide ml-1 no-print">BYPASS</span>` : "";
 
-                    // Satırlara basılı tutma olayları (Mousedown/Mouseup masaüstü, Touchstart/Touchend mobil için) eklendi
                     tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors selectable-row" 
-                            onmousedown="handlePressStart('${s.siparisNo}', '${s.musteriAd}')" 
-                            onmouseup="handlePressEnd()" 
-                            onmouseleave="handlePressEnd()"
-                            ontouchstart="handlePressStart('${s.siparisNo}', '${s.musteriAd}')" 
-                            ontouched="handlePressEnd()">
+                        <tr class="${rowClass}">
+                            <!-- AKSİYON BUTONU VE DROPDOWN MENÜ -->
+                            <td class="p-3 text-center relative dropdown-container no-print">
+                                <button class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-1.5 rounded-lg text-xs transition-all shadow-sm focus:outline-none font-bold">
+                                    ⚙️
+                                </button>
+                                <div class="dropdown-menu absolute left-4 mt-1 w-32 bg-white border border-slate-200 rounded-lg shadow-xl py-1 text-left">
+                                    <button onclick="siparisSil('${s.dbKey}', '${s.musteriAd}')" class="w-full text-left px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors">
+                                        🗑️ Sil
+                                    </button>
+                                    <button onclick="siparisBypassToggle('${s.dbKey}', ${s.bypassed})" class="w-full text-left px-3 py-2 text-xs font-bold text-amber-600 hover:bg-amber-50 transition-colors">
+                                        ${bypassButtonText}
+                                    </button>
+                                </div>
+                            </td>
                             <td class="p-4 text-center font-mono font-bold text-red-600 bg-slate-50/50">${s.siparisNo}</td>
                             <td class="p-4">
-                                <div class="font-bold text-slate-900">${s.musteriAd}</div>
+                                <div class="font-bold text-slate-900">${s.musteriAd} ${statusBadge}</div>
                                 <div class="text-xs text-slate-400">${s.musteriTel || '-'} | <span class="italic">${s.tarih}</span></div>
                             </td>
                             <td class="p-4 text-right font-mono font-semibold text-slate-600">${s.maliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
@@ -248,47 +272,37 @@
             document.getElementById('record-count').innerText = "0";
         }
 
-        // --- SİLME VE BASILI TUTMA FONKSİYONLARI ---
-
-        window.handlePressStart = function(siparisNo, musteriAd) {
-            // Her ihtimale karşı eski zamanlayıcıyı temizle
-            if(pressTimer) clearTimeout(pressTimer);
-            
-            // 5000 milisaniye (1 saniye) basılı tutulursa tetiklenecek silme işlemi
-            pressTimer = setTimeout(() => {
-                siparisSilOnayla(siparisNo, musteriAd);
-            }, 5000);
-        }
-
-        window.handlePressEnd = function() {
-            // Kullanıcı elini erken çekerse veya fareden ayrılırsa zamanlayıcı iptal olur
-            if (pressTimer) clearTimeout(pressTimer);
-        }
-
-        async function siparisSilOnayla(siparisNo, musteriAd) {
-            // Basılı tutma tetiklendiğinde tarayıcının diğer tıklama eventlerini karıştırmaması için zamanlayıcıyı kapatıyoruz
-            if (pressTimer) clearTimeout(pressTimer);
-
-            const onay = confirm(`${siparisNo} nolu Siparişi (${musteriAd}) silmek istediğinize emin misiniz?`);
+        // --- YENİ SİLME FONKSİYONU (ŞİFRELİ) ---
+        async function siparisSil(dbKey, musteriAd) {
+            const onay = confirm(`Bu siparişi (${musteriAd}) veritabanından tamamen silmek istediğinize emin misiniz?`);
             if (!onay) return;
 
             const sifre = prompt("Bu işlem geri alınamaz. Lütfen silme şifresini girin:");
-            
-            if (sifre === null) return; // İptal edilirse çık
+            if (sifre === null) return;
 
             if (sifre === "7556") {
                 try {
-                    // Firebase'den ilgili sipariş koduna dair veriyi kaldırma
-                    await remove(ref(db, 'siparisler/' + siparisNo));
-                    alert(`${siparisNo} nolu sipariş başarıyla veritabanından silindi.`);
-                    
-                    // Listeyi ve toplam verileri canlı yenile
+                    await remove(ref(db, 'siparisler/' + dbKey));
+                    alert("Sipariş veritabanından silindi.");
                     verileriYukle();
                 } catch (error) {
-                    alert("Silme işlemi sırasında hata oluştu: " + error.message);
+                    alert("Silme hatası: " + error.message);
                 }
             } else {
-                alert("Hatalı şifre girdiniz! Silme işlemi iptal edildi.");
+                alert("Hatalı şifre! Silme işlemi reddedildi.");
+            }
+        }
+
+        // --- BYPASS ETME / AKTİF ETME FONKSİYONU ---
+        async function siparisBypassToggle(dbKey, mevcutDurum) {
+            try {
+                // Mevcut durumun tersini veritabanına kaydediyoruz (true ise false, false ise true)
+                await update(ref(db, 'siparisler/' + dbKey), {
+                    bypassed: !mevcutDurum
+                });
+                verileriYukle(); // Tabloyu canlı olarak yeniden güncelle
+            } catch (error) {
+                alert("Bypass güncellenirken hata oluştu: " + error.message);
             }
         }
 
@@ -304,6 +318,9 @@
             tabloyuCiz(filtreliListe);
         };
 
+        // Fonksiyonları global window nesnesine bağlıyoruz
+        window.siparisSil = siparisSil;
+        window.siparisBypassToggle = siparisBypassToggle;
         window.verileriYukle = verileriYukle;
     </script>
 </body>
