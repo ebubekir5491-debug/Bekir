@@ -254,10 +254,10 @@
             // Her ihtimale karşı eski zamanlayıcıyı temizle
             if(pressTimer) clearTimeout(pressTimer);
             
-            // 1000 milisaniye (1 saniye) basılı tutulursa tetiklenecek silme işlemi
+            // 5000 milisaniye (1 saniye) basılı tutulursa tetiklenecek silme işlemi
             pressTimer = setTimeout(() => {
                 siparisSilOnayla(siparisNo, musteriAd);
-            }, 1000);
+            }, 5000);
         }
 
         window.handlePressEnd = function() {
