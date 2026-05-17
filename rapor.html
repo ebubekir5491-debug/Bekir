@@ -83,6 +83,27 @@
             </div>
         </div>
 
+        <!-- YENİ EKLENEN: TARİH ARALIĞI FİLTRELEME PANELİ -->
+        <div class="no-print bg-slate-50 border border-slate-200 p-4 rounded-xl">
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+                <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">📅 Başlangıç Tarihi</label>
+                        <input type="date" id="start-date" onchange="tabloyuFiltrele()" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-medium focus:outline-none focus:border-indigo-500 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">📅 Bitiş Tarihi</label>
+                        <input type="date" id="end-date" onchange="tabloyuFiltrele()" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-medium focus:outline-none focus:border-indigo-500 bg-white">
+                    </div>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button onclick="tarihFiltresiniTemizle()" class="flex-1 md:flex-none bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2 rounded-lg text-sm transition-all">
+                        Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- DETAYLI SATIR LİSTELEME TABLOSU -->
         <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-sm bg-white">
             <table class="w-full text-left border-collapse">
@@ -169,15 +190,15 @@
                         let kazancSayi = satisSayi - maliyetSayi;
 
                         tumSiparisler.push({
-                            dbKey: key, // Silme ve güncelleme işlemleri için gerçek veritabanı düğüm adı
+                            dbKey: key,
                             siparisNo: fb.form_no || key,
                             musteriAd: fb.musteri_ad || "İsimsiz Müşteri",
                             musteriTel: fb.musteri_tel || "",
                             maliyet: maliyetSayi || 0,
                             satis: satisSayi || 0,
                             kazanc: kazancSayi || 0,
-                            tarih: fb.tarih || "" ,
-                            bypassed: siparis.bypassed || false // Veritabanından bypass durumunu çekiyoruz
+                            tarih: fb.tarih || "",
+                            bypassed: siparis.bypassed || false
                         });
                     }
                 });
@@ -203,16 +224,13 @@
                 tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 italic">Sonuç bulunamadı.</td></tr>`;
             } else {
                 siparisListesi.forEach(s => {
-                    // Eğer bypass edilmemişse formüllere dahil et
                     if (!s.bypassed) {
                         genelMaliyet += s.maliyet;
                         genelSatis += s.satis;
-                        genelKazanc += s.kazanc;
-                    }
+                        genelKazanc += s.kazanc}
 
                     const kazancClass = s.kazanc >= 0 ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
                     
-                    // Bypass durumuna göre satır stili ve buton texti ayarlanır
                     const rowClass = s.bypassed 
                         ? "bg-red-50 hover:bg-red-100 border-b border-red-200 text-red-900 line-through decoration-red-400" 
                         : "hover:bg-slate-50 border-b border-slate-100 transition-colors";
@@ -221,7 +239,6 @@
 
                     tbody.innerHTML += `
                         <tr class="${rowClass}">
-                            <!-- AKSİYON BUTONU VE DROPDOWN MENÜ -->
                             <td class="p-3 text-center relative dropdown-container no-print">
                                 <button class="bg-slate-200 hover:bg-slate-300 text-slate-700 p-1.5 rounded-lg text-xs transition-all shadow-sm focus:outline-none font-bold">
                                     ⚙️
@@ -272,7 +289,6 @@
             document.getElementById('record-count').innerText = "0";
         }
 
-        // --- YENİ SİLME FONKSİYONU (ŞİFRELİ) ---
         async function siparisSil(dbKey, musteriAd) {
             const onay = confirm(`Bu siparişi (${musteriAd}) veritabanından tamamen silmek istediğinize emin misiniz?`);
             if (!onay) return;
@@ -293,32 +309,68 @@
             }
         }
 
-        // --- BYPASS ETME / AKTİF ETME FONKSİYONU ---
         async function siparisBypassToggle(dbKey, mevcutDurum) {
             try {
-                // Mevcut durumun tersini veritabanına kaydediyoruz (true ise false, false ise true)
                 await update(ref(db, 'siparisler/' + dbKey), {
                     bypassed: !mevcutDurum
                 });
-                verileriYukle(); // Tabloyu canlı olarak yeniden güncelle
+                verileriYukle();
             } catch (error) {
                 alert("Bypass güncellenirken hata oluştu: " + error.message);
             }
         }
 
+        // Hem metin aramasını hem de tarih aralığını tek bir fonksiyonda birleştiren gelişmiş filtreleme fonksiyonu
         window.tabloyuFiltrele = function() {
             const queryText = document.getElementById('search-input').value.toLowerCase().trim();
+            const startDateVal = document.getElementById('start-date').value;
+            const endDateVal = document.getElementById('end-date').value;
             
             const filtreliListe = tumSiparisler.filter(s => {
-                return s.musteriAd.toLowerCase().includes(queryText) || 
-                       s.siparisNo.includes(queryText) ||
-                       s.musteriTel.includes(queryText);
+                // 1. Metin (Arama) Kriteri kontrolü
+                const metinUygun = s.musteriAd.toLowerCase().includes(queryText) || 
+                                   s.siparisNo.includes(queryText) ||
+                                   s.musteriTel.includes(queryText);
+                
+                if (!metinUygun) return false;
+
+                // 2. Tarih Kriteri Kontrolü
+                if (s.tarih) {
+                    // "GG.AA.YYYY" formatındaki string tarihi JavaScript Date nesnesine çeviriyoruz
+                    const parcalar = s.tarih.split('.');
+                    if (parcalar.length === 3) {
+                        const siparisTarihi = new Date(parcalar[2], parcalar[1] - 1, parcalar[0]);
+                        
+                        if (startDateVal) {
+                            const start = new Date(startDateVal);
+                            start.setHours(0,0,0,0);
+                            if (siparisTarihi < start) return false;
+                        }
+                        
+                        if (endDateVal) {
+                            const end = new Date(endDateVal);
+                            end.setHours(23,59,59,999);
+                            if (siparisTarihi > end) return false;
+                        }
+                    }
+                } else if (startDateVal || endDateVal) {
+                    // Eğer siparişin tarihi yoksa ama tarih filtresi seçilmişse bu siparişi gizle
+                    return false;
+                }
+
+                return true;
             });
             
             tabloyuCiz(filtreliListe);
         };
 
-        // Fonksiyonları global window nesnesine bağlıyoruz
+        // Tarih girdilerini sıfırlayıp listeyi eski haline getiren fonksiyon
+        window.tarihFiltresiniTemizle = function() {
+            document.getElementById('start-date').value = "";
+            document.getElementById('end-date').value = "";
+            tabloyuFiltrele();
+        };
+
         window.siparisSil = siparisSil;
         window.siparisBypassToggle = siparisBypassToggle;
         window.verileriYukle = verileriYukle;
