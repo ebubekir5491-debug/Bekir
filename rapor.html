@@ -83,7 +83,7 @@
             </div>
         </div>
 
-        <!-- YENİ EKLENEN: TARİH ARALIĞI FİLTRELEME PANELİ -->
+        <!-- TARİH ARALIĞI FİLTRELEME PANELİ -->
         <div class="no-print bg-slate-50 border border-slate-200 p-4 rounded-xl">
             <div class="flex flex-col md:flex-row gap-4 items-end">
                 <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
@@ -227,7 +227,8 @@
                     if (!s.bypassed) {
                         genelMaliyet += s.maliyet;
                         genelSatis += s.satis;
-                        genelKazanc += s.kazanc}
+                        genelKazanc += s.kazanc;
+                    }
 
                     const kazancClass = s.kazanc >= 0 ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
                     
@@ -320,42 +321,53 @@
             }
         }
 
-        // Hem metin aramasını hem de tarih aralığını tek bir fonksiyonda birleştiren gelişmiş filtreleme fonksiyonu
+        // TAMAMEN YENİLENEN VE HATASIZ HALE GETİRİLEN FİLTRELEME MOTORU
         window.tabloyuFiltrele = function() {
             const queryText = document.getElementById('search-input').value.toLowerCase().trim();
-            const startDateVal = document.getElementById('start-date').value;
-            const endDateVal = document.getElementById('end-date').value;
+            const startDateVal = document.getElementById('start-date').value; // Formati: YYYY-MM-DD
+            const endDateVal = document.getElementById('end-date').value;     // Formati: YYYY-MM-DD
             
             const filtreliListe = tumSiparisler.filter(s => {
-                // 1. Metin (Arama) Kriteri kontrolü
+                // 1. Metin Araması Kriteri
                 const metinUygun = s.musteriAd.toLowerCase().includes(queryText) || 
-                                   s.siparisNo.includes(queryText) ||
+                                   s.siparisNo.toLowerCase().includes(queryText) ||
                                    s.musteriTel.includes(queryText);
                 
                 if (!metinUygun) return false;
 
-                // 2. Tarih Kriteri Kontrolü
-                if (s.tarih) {
-                    // "GG.AA.YYYY" formatındaki string tarihi JavaScript Date nesnesine çeviriyoruz
+                // 2. Gelişmiş Tarih Aralığı Kriteri
+                if (startDateVal || endDateVal) {
+                    if (!s.tarih || s.tarih.trim() === "") return false;
+
+                    // String gelen tarihi (GG.AA.YYYY) güvenli parçalara ayırıp temizliyoruz
                     const parcalar = s.tarih.split('.');
-                    if (parcalar.length === 3) {
-                        const siparisTarihi = new Date(parcalar[2], parcalar[1] - 1, parcalar[0]);
-                        
-                        if (startDateVal) {
-                            const start = new Date(startDateVal);
-                            start.setHours(0,0,0,0);
-                            if (siparisTarihi < start) return false;
-                        }
-                        
-                        if (endDateVal) {
-                            const end = new Date(endDateVal);
-                            end.setHours(23,59,59,999);
-                            if (siparisTarihi > end) return false;
-                        }
+                    if (parcalar.length !== 3) return false;
+
+                    const gun = parseInt(parcalar[0].trim(), 10);
+                    const ay = parseInt(parcalar[1].trim(), 10) - 1; // JS'de aylar 0-11 arasındadır
+                    const yil = parseInt(parcalar[2].trim(), 10);
+
+                    // Geçersiz parçalanma kontrolü
+                    if (isNaN(gun) || isNaN(ay) || isNaN(yil)) return false;
+
+                    const siparisTarihi = new Date(yil, ay, gun);
+                    siparisTarihi.setHours(0, 0, 0, 0);
+
+                    // Başlangıç Tarihi Kontrolü
+                    if (startDateVal) {
+                        const startParcalar = startDateVal.split('-');
+                        const start = new Date(parseInt(startParcalar[0], 10), parseInt(startParcalar[1], 10) - 1, parseInt(startParcalar[2], 10));
+                        start.setHours(0, 0, 0, 0);
+                        if (siparisTarihi < start) return false;
                     }
-                } else if (startDateVal || endDateVal) {
-                    // Eğer siparişin tarihi yoksa ama tarih filtresi seçilmişse bu siparişi gizle
-                    return false;
+                    
+                    // Bitiş Tarihi Kontrolü
+                    if (endDateVal) {
+                        const endParcalar = endDateVal.split('-');
+                        const end = new Date(parseInt(endParcalar[0], 10), parseInt(endParcalar[1], 10) - 1, parseInt(endParcalar[2], 10));
+                        end.setHours(0, 0, 0, 0);
+                        if (siparisTarihi > end) return false;
+                    }
                 }
 
                 return true;
@@ -364,7 +376,6 @@
             tabloyuCiz(filtreliListe);
         };
 
-        // Tarih girdilerini sıfırlayıp listeyi eski haline getiren fonksiyon
         window.tarihFiltresiniTemizle = function() {
             document.getElementById('start-date').value = "";
             document.getElementById('end-date').value = "";
