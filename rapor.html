@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipariş Raporlama Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: #ffffff; padding: 0; }
+            .report-container { box-shadow: none; max-width: 100%; width: 100%; padding: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-8 text-slate-800">
+
+    <div class="max-w-6xl mx-auto space-y-6 report-container bg-white p-6 md:p-8 rounded-2xl shadow-xl border border-slate-200">
+        
+        <!-- ÜST BAŞLIK VE KONTROLLER -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-6">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tight uppercase">📊 SİPARİŞ RAPORU</h1>
+                <p class="text-sm font-medium text-slate-500 mt-1">Canlı veritabanı maliyet, ciro ve kazanç analiz paneli</p>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto no-print">
+                <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm">
+                    🖨️ Yazdır / PDF Kaydet
+                </button>
+                <button onclick="verileriYukle()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 text-sm">
+                    🔄 Yenile
+                </button>
+            </div>
+        </div>
+
+        <!-- GENEL TOPLAMLAR (SAYFA BAŞINDA GÖSTERİM) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Toplam Maliyet -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-md border-b-4 border-amber-500">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Genel Toplam Maliyet</p>
+                <p id="total-maliyet-display" class="text-3xl font-black text-amber-400 mt-2">0.00 TL</p>
+                <div class="text-[11px] text-slate-400 mt-1">Siparişlerin birikmiş üretim/malzeme giderleri</div>
+            </div>
+
+            <!-- Toplam Satış Tutarı -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-md border-b-4 border-indigo-500">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Genel Toplam Satış</p>
+                <p id="total-satis-display" class="text-3xl font-black text-indigo-400 mt-2">0.00 TL</p>
+                <div class="text-[11px] text-slate-400 mt-1">Alınan siparişlerin toplam brüt cirosu</div>
+            </div>
+
+            <!-- Net Kazanç (Kâr) -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 rounded-2xl shadow-md border-b-4 border-emerald-500">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Net Kazanç (Kâr)</p>
+                <p id="total-kazanc-display" class="text-3xl font-black text-emerald-400 mt-2">0.00 TL</p>
+                <div id="kazanc-oran-display" class="text-[11px] text-emerald-400 mt-1 font-semibold">Kâr Marjı: %0</div>
+            </div>
+        </div>
+
+        <!-- ARAMA BARBARI -->
+        <div class="no-print bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col sm:flex-row gap-4 items-center">
+            <div class="w-full sm:flex-1 relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">🔍</span>
+                <input type="text" id="search-input" oninput="tabloyuFiltrele()" class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm font-medium focus:outline-none focus:border-indigo-500 bg-white" placeholder="Müşteri adı veya Sipariş No ile ara...">
+            </div>
+            <div class="text-xs font-bold text-slate-500 uppercase bg-white px-3 py-2 border border-slate-200 rounded-lg shadow-sm">
+                Toplam Sipariş: <span id="record-count" class="text-indigo-600 font-black">0</span>
+            </div>
+        </div>
+
+        <!-- DETAYLI SATIR LİSTELEME TABLOSU -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl shadow-sm bg-white">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 border-b border-slate-200 text-slate-700 text-xs font-bold uppercase tracking-wider">
+                        <th class="p-4 text-center w-28">Sipariş No</th>
+                        <th class="p-4">Müşteri</th>
+                        <th class="p-4 text-right w-44">Maliyet</th>
+                        <th class="p-4 text-right w-44">Satış Tutarı</th>
+                        <th class="p-4 text-right w-44">Kazanç (Kâr)</th>
+                    </tr>
+                </thead>
+                <tbody id="report-table-body" class="divide-y divide-slate-100 text-sm font-medium text-slate-700">
+                    <tr>
+                        <td colspan="5" class="p-8 text-center text-slate-400 italic">
+                            Veritabanına bağlanılıyor ve sipariş verileri yükleniyor...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- ALT BİLGİ -->
+        <div class="text-center text-[11px] text-slate-400 font-medium pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>© Ada Sineklik Raporlama Sistemi</p>
+            <p id="report-date" class="font-bold text-slate-500">Rapor Tarihi: --</p>
+        </div>
+    </div>
+
+    <!-- FIREBASE MANTIĞI -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Paylaştığınız kodlardaki Firebase Config ayarları ile birebir eşleştirildi
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c",
+            storageBucket: "adasineklik54-4c11c.firebasestorage.app",
+            messagingSenderId: "416407042534",
+            appId: "1:416407042534:web:8105a2ac5f87477eff7e27"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let tumSiparisler = [];
+
+        window.onload = () => {
+            document.getElementById('report-date').innerText = "Rapor Tarihi: " + new Date().toLocaleString('tr-TR');
+            verileriYukle();
+        };
+
+        // Firebase veritabanından siparişleri çeken ana fonksiyon
+        async function verileriYukle() {
+            const tbody = document.getElementById('report-table-body');
+            try {
+                const snap = await get(ref(db, 'siparisler'));
+                if (!snap.exists()) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Veritabanında kayıtlı sipariş bulunamadı!</td></tr>`;
+                    return;
+                }
+
+                tumSiparisler = [];
+                const data = snap.val();
+
+                Object.keys(data).forEach(key => {
+                    const siparis = data[key];
+                    if (siparis.form_bilgileri) {
+                        const fb = siparis.form_bilgileri;
+                        
+                        // "150.00 TL" gibi metinsel verileri JS hesaplaması için sayıya temizleme
+                        let maliyetSayi = 0;
+                        if (fb.toplam_maliyet) {
+                            maliyetSayi = parseFloat(fb.toplam_maliyet.replace(/[^\d.,]/g, '').replace(',', '.'));
+                        }
+
+                        let satisSayi = 0;
+                        if (fb.toplam_satis_fiyati) {
+                            satisSayi = parseFloat(fb.toplam_satis_fiyati.toString().replace(/[^\d.,]/g, '').replace(',', '.'));
+                        }
+
+                        // Kazanılan Net Tutar (Satış - Maliyet)
+                        let kazancSayi = satisSayi - maliyetSayi;
+
+                        tumSiparisler.push({
+                            siparisNo: fb.form_no || key,
+                            musteriAd: fb.musteri_ad || "İsimsiz Müşteri",
+                            musteriTel: fb.musteri_tel || "",
+                            maliyet: maliyetSayi || 0,
+                            satis: satisSayi || 0,
+                            kazanc: kazancSayi || 0,
+                            tarih: fb.tarih || ""
+                        });
+                    }
+                });
+
+                // Siparişleri numarasına göre yukarıdan aşağıya sırala (En yeni en üstte)
+                tumSiparisler.sort((a, b) => b.siparisNo.localeCompare(a.siparisNo));
+
+                tabloyuCiz(tumSiparisler);
+
+            } catch (error) {
+                console.error("Hata:", error);
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500 font-bold">Veri çekilirken hata oluştu: ${error.message}</td></tr>`;
+            }
+        }
+
+        // Tablo satırlarını oluşturan ve genel toplam kartlarını hesaplayan fonksiyon
+        function tabloyuCiz(siparisListesi) {
+            const tbody = document.getElementById('report-table-body');
+            tbody.innerHTML = "";
+
+            let genelMaliyet = 0;
+            let genelSatis = 0;
+            let genelKazanc = 0;
+
+            if (siparisListesi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-400 italic">Sonuç bulunamadı.</td></tr>`;
+            } else {
+                siparisListesi.forEach(s => {
+                    genelMaliyet += s.maliyet;
+                    genelSatis += s.satis;
+                    genelKazanc += s.kazanc;
+
+                    // Kar durumuna göre dinamik yazı rengi
+                    const kazancClass = s.kazanc >= 0 ? "text-emerald-600 font-bold" : "text-red-600 font-bold";
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 border-b border-slate-100 transition-colors">
+                            <td class="p-4 text-center font-mono font-bold text-red-600 bg-slate-50/50">${s.siparisNo}</td>
+                            <td class="p-4">
+                                <div class="font-bold text-slate-900">${s.musteriAd}</div>
+                                <div class="text-xs text-slate-400">${s.musteriTel || '-'} | <span class="italic">${s.tarih}</span></div>
+                            </td>
+                            <td class="p-4 text-right font-mono font-semibold text-slate-600">${s.maliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                            <td class="p-4 text-right font-mono font-bold text-indigo-700">${s.satis.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                            <td class="p-4 text-right font-mono ${kazancClass}">${s.kazanc.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Sayfa başındaki Genel Toplam Panellerini güncelleme
+            document.getElementById('total-maliyet-display').innerText = genelMaliyet.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+            document.getElementById('total-satis-display').innerText = genelSatis.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+            document.getElementById('total-kazanc-display').innerText = genelKazanc.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " TL";
+            
+            // Eğer net zarar varsa kazanç rengini kırmızıya çevirir
+            const kazancDisplayBox = document.getElementById('total-kazanc-display');
+            if (genelKazanc < 0) {
+                kazancDisplayBox.className = "text-3xl font-black text-red-500 mt-2";
+            } else {
+                kazancDisplayBox.className = "text-3xl font-black text-emerald-400 mt-2";
+            }
+
+            let karMarji = genelSatis > 0 ? Math.round((genelKazanc / genelSatis) * 100) : 0;
+            document.getElementById('kazanc-oran-display').innerText = `Kâr Oranı / Marjı: %${karMarji}`;
+            document.getElementById('record-count').innerText = siparisListesi.length;
+        }
+
+        // Canlı arama filtresi
+        window.tabloyuFiltrele = function() {
+            const queryText = document.getElementById('search-input').value.toLowerCase().trim();
+            
+            const filtreliListe = tumSiparisler.filter(s => {
+                return s.musteriAd.toLowerCase().includes(queryText) || 
+                       s.siparisNo.includes(queryText) ||
+                       s.musteriTel.includes(queryText);
+            });
+            
+            tabloyuCiz(filtreliListe);
+        };
+
+        window.verileriYukle = verileriYukle;
+    </script>
+</body>
+</html>
