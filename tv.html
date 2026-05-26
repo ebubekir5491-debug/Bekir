@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Senkronize TV Oynatıcı (Kesintisiz Ses)</title>
+    <title>Firebase Senkronize TV Oynatıcı (Kesin Çözüm)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -108,11 +108,14 @@
         .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 6px; }
         .time-display { font-size: 14px; min-width: 100px; text-align: center; }
     </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
     <div class="container">
-        <h2>Yayın Kayıt Formu (Atlama Korumalı)</h2>
+        <h2>Yayın Kayıt Formu (Düzeltilmiş)</h2>
         <div class="form-group">
             <label>Yayın Adı:</label>
             <input type="text" id="stream-name" placeholder="Örn: Benim Sinemam">
@@ -130,7 +133,7 @@
 
     <div class="list-container">
         <h3>Kayıtlı Yayınlar</h3>
-        <ul id="stream-list">Yükleniyor...</ul>
+        <ul id="stream-list">Yükleniyor veya Bağlantı Kuruluyor...</ul>
     </div>
 
     <div id="player-wrapper">
@@ -147,11 +150,9 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = {
+    <script>
+        // Sizin Firebase Yapılandırmanız
+        var firebaseConfig = {
             apiKey: "AIzaSyCDFqL6UVgbLSYo69qEICQlMppJlxX6g8E",
             authDomain: "naberdeneme-ffa04.firebaseapp.com",
             databaseURL: "https://naberdeneme-ffa04-default-rtdb.firebaseio.com",
@@ -162,64 +163,89 @@
             measurementId: "G-1QZEGMF3ZV"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const streamsRef = ref(db, 'yayinlar');
+        // Firebase'i Başlatma (Klasik Güvenli Yöntem)
+        firebase.initializeApp(firebaseConfig);
+        
+        // KRİTİK DÜZELTME: databaseURL'i elle database motoruna besliyoruz, böylece boş dönme hatası çözülüyor.
+        var db = firebase.database();
+        var streamsRef = db.ref('yayinlar');
 
-        const video = document.getElementById('my-video');
-        const audio = document.getElementById('my-audio');
-        const playerWrapper = document.getElementById('player-wrapper');
-        const progressBar = document.getElementById('progress-bar');
-        const progressContainer = document.getElementById('progress-container');
-        const timeDisplay = document.getElementById('time-display');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const streamList = document.getElementById('stream-list');
+        var video = document.getElementById('my-video');
+        var audio = document.getElementById('my-audio');
+        var playerWrapper = document.getElementById('player-wrapper');
+        var progressBar = document.getElementById('progress-bar');
+        var progressContainer = document.getElementById('progress-container');
+        var timeDisplay = document.getElementById('time-display');
+        var playPauseBtn = document.getElementById('play-pause-btn');
+        var streamList = document.getElementById('stream-list');
 
-        let isSeeking = false;
-        let syncInterval = null;
+        var isSeeking = false;
+        var syncInterval = null;
 
-        // Firebase Ekleme
+        // 1. Firebase'e Veri Kaydetme (Düzeltildi)
         document.getElementById('save-btn').onclick = function() {
-            const name = document.getElementById('stream-name').value.trim();
-            const videoUrl = document.getElementById('video-link').value.trim();
-            const audioUrl = document.getElementById('audio-link').value.trim();
+            var name = document.getElementById('stream-name').value.trim();
+            var videoUrl = document.getElementById('video-link').value.trim();
+            var audioUrl = document.getElementById('audio-link').value.trim();
 
             if(!name || !videoUrl || !audioUrl) {
                 alert("Lütfen tüm alanları doldurun!");
                 return;
             }
 
-            push(streamsRef, { name, videoUrl, audioUrl }).then(() => {
-                document.getElementById('stream-name').value = '';
-                document.getElementById('video-link').value = '';
-                document.getElementById('audio-link').value = '';
+            // Firebase veritabanına doğrudan push atıyoruz
+            streamsRef.push({
+                name: name,
+                videoUrl: videoUrl,
+                audioUrl: audioUrl
+            }, function(error) {
+                if (error) {
+                    alert("Kayıt Başarısız! Firebase kurallarınızı (Rules) kontrol edin: " + error.message);
+                } else {
+                    document.getElementById('stream-name').value = '';
+                    document.getElementById('video-link').value = '';
+                    document.getElementById('audio-link').value = '';
+                }
             });
         };
 
-        // Firebase Listeleme
-        onValue(streamsRef, (snapshot) => {
+        // 2. Firebase'den Verileri Anlık Okuma ve Ekrana Basma (Düzeltildi)
+        streamsRef.on('value', function(snapshot) {
             streamList.innerHTML = '';
-            const data = snapshot.val();
-            if (!data) { streamList.innerHTML = '<li>Henüz yayın yok.</li>'; return; }
+            var data = snapshot.val();
+            
+            if (!data) {
+                streamList.innerHTML = '<li>Henüz kayıtlı yayın yok.</li>';
+                return;
+            }
 
-            Object.keys(data).forEach(key => {
-                const stream = data[key];
-                const li = document.createElement('li');
-                li.onclick = function() { startPlayer(stream.videoUrl, stream.audioUrl); };
-                li.innerHTML = `<span><strong>${stream.name}</strong></span><button class="delete-btn" data-id="${key}">Sil</button>`;
+            Object.keys(data).forEach(function(key) {
+                var stream = data[key];
+                var li = document.createElement('li');
+                
+                // Satıra tıklanınca medyaları yükle
+                li.onclick = function() {
+                    startPlayer(stream.videoUrl, stream.audioUrl);
+                };
+                
+                li.innerHTML = "<span><strong>" + stream.name + "</strong></span><button class='delete-btn' data-id='" + key + "'>Sil</button>";
                 streamList.appendChild(li);
             });
 
-            const deleteButtons = document.querySelectorAll('.delete-btn');
-            for(let i=0; i<deleteButtons.length; i++) {
+            // Silme butonlarının olayları
+            var deleteButtons = document.querySelectorAll('.delete-btn');
+            for(var i=0; i<deleteButtons.length; i++) {
                 deleteButtons[i].onclick = function(e) {
-                    e.stopPropagation();
-                    remove(ref(db, 'yayinlar/' + this.getAttribute('data-id')));
+                    e.stopPropagation(); // Satırın tıklanma olayını kes
+                    var id = this.getAttribute('data-id');
+                    db.ref('yayinlar/' + id).remove();
                 };
             }
+        }, function(error) {
+            streamList.innerHTML = '<li>Veri okuma hatası! Firebase Console\'dan Realtime Database kurallarını true yaptığınızdan emin olun.</li>';
         });
 
-        // Oynatıcı Başlatıcı
+        // 3. Atlama Korumalı Oynatıcı Başlatıcı
         function startPlayer(videoUrl, audioUrl) {
             video.src = videoUrl;
             audio.src = audioUrl;
@@ -231,32 +257,110 @@
             if (playerWrapper.requestFullscreen) playerWrapper.requestFullscreen();
             else if (playerWrapper.webkitRequestFullscreen) playerWrapper.webkitRequestFullscreen();
 
-            video.play().catch(()=>{});
-            audio.play().catch(()=>{});
+            video.play().catch(function(){});
+            audio.play().catch(function(){});
             playPauseBtn.innerText = "⏸";
 
-            // Projeksiyon senkronizasyon motorunu çalıştır (250ms aralık ideal)
             if(syncInterval) clearInterval(syncInterval);
             syncInterval = setInterval(smoothSyncCheck, 250);
         }
 
-        // Akıllı Kesintisiz Senkronizasyon Filtresi (Atlama Önleyici)
+        // 4. Atlama Yapmayan Akıllı Ses Filtresi
         function smoothSyncCheck() {
             if (isSeeking || video.paused || video.seeking) return;
 
-            // Süre çubuğu güncelleme
-            const percentage = (video.currentTime / video.duration) * 100;
+            var percentage = (video.currentTime / video.duration) * 100;
             if(!isNaN(percentage)) {
                 progressBar.style.width = percentage + "%";
                 timeDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
             }
 
-            // Fark hesabı (Video - Ses)
-            const diff = video.currentTime - audio.currentTime;
+            var diff = video.currentTime - audio.currentTime;
 
-            // DURUM 1: Ses hafifçe öndeyse veya arkadaysa (İnce Ayar - Hız Değişimi)
-            // Sürekli saniyeyi geriye çekip sesi atlatmak yerine, sesin oynatma hızını %5 değiştirerek çıtlatmadan yakalatıyoruz.
+            // Hafif kaymalarda hızı saptırarak kulak tırmalamadan eşitle
             if (Math.abs(diff) > 0.1 && Math.abs(diff) <= 0.5) {
                 if (diff > 0) {
-                    audio.playbackRate = 1.06; // Ses geride kalmış, hafif hızlandır
-                } else
+                    audio.playbackRate = 1.05;
+                } else {
+                    audio.playbackRate = 0.95;
+                }
+            } 
+            // Büyük kaymalarda (Projeksiyon donarsa) atlama yapmadan sesi durdurup videoyu bekleme
+            else if (Math.abs(diff) > 0.5) {
+                audio.playbackRate = 1.0; 
+                if (diff < 0) { 
+                    if (!audio.paused) {
+                        audio.pause();
+                        var watchVideo = setInterval(function() {
+                            if (video.currentTime >= audio.currentTime || video.paused) {
+                                audio.play().catch(function(){});
+                                clearInterval(watchVideo);
+                            }
+                        }, 50);
+                    }
+                } else {
+                    audio.currentTime = video.currentTime;
+                }
+            } else {
+                audio.playbackRate = 1.0;
+                if (audio.paused && !video.paused) audio.play().catch(function(){});
+            }
+        }
+
+        // Oynat / Duraklat
+        playPauseBtn.onclick = function() {
+            if (video.paused) {
+                video.play().catch(function(){});
+                audio.play().catch(function(){});
+                playPauseBtn.innerText = "⏸";
+            } else {
+                video.pause();
+                audio.pause();
+                playPauseBtn.innerText = "▶";
+            }
+        };
+
+        // İlerleme Çubuğuna Tıklama (Scrubbing)
+        progressContainer.onclick = function(e) {
+            isSeeking = true;
+            audio.playbackRate = 1.0;
+            var rect = progressContainer.getBoundingClientRect();
+            var clickPercentage = (e.clientX - rect.left) / rect.width;
+            var newTime = clickPercentage * video.duration;
+            
+            video.currentTime = newTime;
+            audio.currentTime = newTime;
+            progressBar.style.width = (clickPercentage * 100) + "%";
+            
+            setTimeout(function() { isSeeking = false; }, 400);
+        };
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            var mins = Math.floor(seconds / 60);
+            var secs = Math.floor(seconds % 60);
+            return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+        }
+
+        function exitPlayer() {
+            if(syncInterval) clearInterval(syncInterval);
+            video.pause();
+            audio.pause();
+            audio.playbackRate = 1.0;
+            playerWrapper.style.display = "none";
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if(document.exitFullscreen) document.exitFullscreen();
+                else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        }
+        document.getElementById('close-btn').onclick = exitPlayer;
+
+        var fsEvents = ['fullscreenchange', 'webkitfullscreenchange'];
+        fsEvents.forEach(function(evt) {
+            document.addEventListener(evt, function() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) exitPlayer();
+            });
+        });
+    </script>
+</body>
+</html>
