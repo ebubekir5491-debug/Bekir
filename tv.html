@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Senkronize TV Oynatıcı (Eski Cihaz Uyumlu)</title>
+    <title>Firebase Senkronize TV Oynatıcı (Kesintisiz Ses)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -97,7 +97,6 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            opacity: 1; /* Eski cihazlarda kaybolup gelme sorunu olmasın diye sabit görünür yapıldı */
         }
         .control-btn {
             background: none; border: none; color: white;
@@ -113,7 +112,7 @@
 <body>
 
     <div class="container">
-        <h2>Yayın Kayıt Formu (Uyumlu Sürüm)</h2>
+        <h2>Yayın Kayıt Formu (Atlama Korumalı)</h2>
         <div class="form-group">
             <label>Yayın Adı:</label>
             <input type="text" id="stream-name" placeholder="Örn: Benim Sinemam">
@@ -177,9 +176,9 @@
         const streamList = document.getElementById('stream-list');
 
         let isSeeking = false;
-        let syncInterval = null; // Eski cihazlar için zorunlu zamanlayıcı döngüsü
+        let syncInterval = null;
 
-        // 1. Firebase Veri Ekleme
+        // Firebase Ekleme
         document.getElementById('save-btn').onclick = function() {
             const name = document.getElementById('stream-name').value.trim();
             const videoUrl = document.getElementById('video-link').value.trim();
@@ -190,169 +189,74 @@
                 return;
             }
 
-            push(streamsRef, {
-                name: name,
-                videoUrl: videoUrl,
-                audioUrl: audioUrl
-            }).then(() => {
+            push(streamsRef, { name, videoUrl, audioUrl }).then(() => {
                 document.getElementById('stream-name').value = '';
                 document.getElementById('video-link').value = '';
                 document.getElementById('audio-link').value = '';
-            }).catch(err => alert("Hata: " + err.message));
+            });
         };
 
-        // 2. Firebase Listeleme
+        // Firebase Listeleme
         onValue(streamsRef, (snapshot) => {
             streamList.innerHTML = '';
             const data = snapshot.val();
-            if (!data) {
-                streamList.innerHTML = '<li>Henüz kayıtlı yayın yok.</li>';
-                return;
-            }
+            if (!data) { streamList.innerHTML = '<li>Henüz yayın yok.</li>'; return; }
 
             Object.keys(data).forEach(key => {
                 const stream = data[key];
                 const li = document.createElement('li');
-                
-                li.onclick = function() {
-                    startPlayer(stream.videoUrl, stream.audioUrl);
-                };
-                
-                li.innerHTML = `
-                    <span><strong>${stream.name}</strong></span>
-                    <button class="delete-btn" data-id="${key}">Sil</button>
-                `;
+                li.onclick = function() { startPlayer(stream.videoUrl, stream.audioUrl); };
+                li.innerHTML = `<span><strong>${stream.name}</strong></span><button class="delete-btn" data-id="${key}">Sil</button>`;
                 streamList.appendChild(li);
             });
 
-            // Silme butonları
             const deleteButtons = document.querySelectorAll('.delete-btn');
             for(let i=0; i<deleteButtons.length; i++) {
                 deleteButtons[i].onclick = function(e) {
                     e.stopPropagation();
-                    const id = this.getAttribute('data-id');
-                    remove(ref(db, 'yayinlar/' + id));
+                    remove(ref(db, 'yayinlar/' + this.getAttribute('data-id')));
                 };
             }
         });
 
-        // 3. Projeksiyon ve Eski Cihazlar İçin Güçlendirilmiş Oynatıcı Başlatıcı
+        // Oynatıcı Başlatıcı
         function startPlayer(videoUrl, audioUrl) {
             video.src = videoUrl;
             audio.src = audioUrl;
             playerWrapper.style.display = "block";
 
-            // Eski cihazlarda takılmayı önlemek için direkt yükle emri veriyoruz
             video.load();
             audio.load();
 
-            // Tam ekran kodları (Eski Android TV/Projeksiyon uyumlu varyasyonlar)
-            if (playerWrapper.requestFullscreen) {
-                playerWrapper.requestFullscreen();
-            } else if (playerWrapper.webkitRequestFullscreen) {
-                playerWrapper.webkitRequestFullscreen();
-            } else if (playerWrapper.mozRequestFullScreen) {
-                playerWrapper.mozRequestFullScreen();
-            } else if (playerWrapper.msRequestFullscreen) {
-                playerWrapper.msRequestFullscreen();
-            }
+            if (playerWrapper.requestFullscreen) playerWrapper.requestFullscreen();
+            else if (playerWrapper.webkitRequestFullscreen) playerWrapper.webkitRequestFullscreen();
 
-            // Garanti başlatma: Tarayıcı 'canplay' olayını kaçırırsa diye direkt oynatmayı deniyoruz
             video.play().catch(()=>{});
             audio.play().catch(()=>{});
             playPauseBtn.innerText = "⏸";
 
-            // Projeksiyon için kritik adım: Donanımsal gecikmeleri yakalamak adına 
-            // her 150 milisaniyede bir (saniyede ~7 kez) arka planda zorunlu senkronizasyon kontrolü başlatıyoruz.
+            // Projeksiyon senkronizasyon motorunu çalıştır (250ms aralık ideal)
             if(syncInterval) clearInterval(syncInterval);
-            syncInterval = setInterval(forceSyncCheck, 150);
+            syncInterval = setInterval(smoothSyncCheck, 250);
         }
 
-        // 4. Agresif Senkronizasyon Motoru (Projeksiyon için)
-        function forceSyncCheck() {
-            if (isSeeking || video.paused) return;
+        // Akıllı Kesintisiz Senkronizasyon Filtresi (Atlama Önleyici)
+        function smoothSyncCheck() {
+            if (isSeeking || video.paused || video.seeking) return;
 
-            // İlerleme çubuğu ve süre yazısını güncelle
+            // Süre çubuğu güncelleme
             const percentage = (video.currentTime / video.duration) * 100;
             if(!isNaN(percentage)) {
                 progressBar.style.width = percentage + "%";
                 timeDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
             }
 
-            // Hassasiyeti 0.15 saniyeye indirdik. Projeksiyon cihazı videoyu çözerken 
-            // ufacık bir yavaşlama yaşarsa ses anında duraksayıp videonun hizasına çekilir.
+            // Fark hesabı (Video - Ses)
             const diff = video.currentTime - audio.currentTime;
-            if (Math.abs(diff) > 0.15) {
-                audio.currentTime = video.currentTime;
-                // Eğer ses tamamen geride kalıp donduysa tekrar oynatmayı tetikle
-                if(audio.paused && !video.paused) audio.play().catch(()=>{});
-            }
-        }
 
-        // Duraklat / Devam Et
-        playPauseBtn.onclick = function() {
-            if (video.paused) {
-                video.play().catch(()=>{});
-                audio.play().catch(()=>{});
-                playPauseBtn.innerText = "⏸";
-            } else {
-                video.pause();
-                audio.pause();
-                playPauseBtn.innerText = "▶";
-            }
-        };
-
-        // 5. İlerletme Çubuğu Tıklama Algılayıcısı
-        progressContainer.onclick = function(e) {
-            isSeeking = true;
-            const rect = progressContainer.getBoundingClientRect();
-            const clickX = e.clientX - rect.left;
-            const clickPercentage = clickX / rect.width;
-            const newTime = clickPercentage * video.duration;
-            
-            // Önce videoyu ardından sesi eş zamanlı yeni saniyeye atıyoruz
-            video.currentTime = newTime;
-            audio.currentTime = newTime;
-            
-            progressBar.style.width = (clickPercentage * 100) + "%";
-            
-            // Eski cihazlarda atlama sonrası sesin oynatılmaya devam ettiğinden emin oluyoruz
-            if(!video.paused) {
-                audio.play().catch(()=>{});
-            }
-            
-            // Cihazın hafızasına toparlanması için kısa bir süre tanıyoruz
-            setTimeout(() => { isSeeking = false; }, 200);
-        };
-
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return "00:00";
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
-        }
-
-        function exitPlayer() {
-            if(syncInterval) clearInterval(syncInterval);
-            video.pause();
-            audio.pause();
-            playerWrapper.style.display = "none";
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                if(document.exitFullscreen) document.exitFullscreen();
-                else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-            }
-        }
-        document.getElementById('close-btn').onclick = exitPlayer;
-
-        // Kumandadan veya ESC ile tam ekrandan çıkılırsa temizle
-        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
-        fsEvents.forEach(evt => {
-            document.addEventListener(evt, () => {
-                if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
-                    exitPlayer();
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+            // DURUM 1: Ses hafifçe öndeyse veya arkadaysa (İnce Ayar - Hız Değişimi)
+            // Sürekli saniyeyi geriye çekip sesi atlatmak yerine, sesin oynatma hızını %5 değiştirerek çıtlatmadan yakalatıyoruz.
+            if (Math.abs(diff) > 0.1 && Math.abs(diff) <= 0.5) {
+                if (diff > 0) {
+                    audio.playbackRate = 1.06; // Ses geride kalmış, hafif hızlandır
+                } else
