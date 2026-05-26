@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Senkronize TV Oynatıcı</title>
+    <title>Firebase Senkronize TV Oynatıcı (Eski Cihaz Uyumlu)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -46,7 +46,6 @@
             font-weight: bold;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.3s;
         }
         button:hover { background: #007c82; }
         .list-container {
@@ -67,9 +66,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: transform 0.2s, background 0.2s;
         }
-        li:hover { background: #393e46; transform: scale(1.02); }
+        li:hover { background: #393e46; }
         .delete-btn {
             background: #ff2e63;
             color: white;
@@ -78,13 +76,12 @@
             border-radius: 4px;
             cursor: pointer;
         }
-        .delete-btn:hover { background: #c71e46; }
 
         /* Tam Ekran Video ve Kontrol Alanı */
         #player-wrapper {
             display: none;
             position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: black;
             z-index: 9999;
         }
@@ -94,31 +91,29 @@
         .controls {
             position: absolute;
             bottom: 0; left: 0; width: 100%;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
+            background: rgba(0,0,0,0.85);
+            padding: 20px;
             box-sizing: border-box;
             display: flex;
             align-items: center;
             gap: 15px;
-            opacity: 0;
-            transition: opacity 0.3s;
+            opacity: 1; /* Eski cihazlarda kaybolup gelme sorunu olmasın diye sabit görünür yapıldı */
         }
-        #player-wrapper:hover .controls { opacity: 1; }
         .control-btn {
             background: none; border: none; color: white;
-            font-size: 20px; cursor: pointer; width: auto; padding: 0 10px;
+            font-size: 22px; cursor: pointer; width: auto; padding: 0 10px;
         }
         .progress-container {
-            flex-grow: 1; position: relative; cursor: pointer; height: 8px; background: #555; border-radius: 4px;
+            flex-grow: 1; position: relative; cursor: pointer; height: 12px; background: #555; border-radius: 6px;
         }
-        .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 4px; }
-        .time-display { font-size: 14px; min-width: 90px; text-align: center; }
+        .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 6px; }
+        .time-display { font-size: 14px; min-width: 100px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Yayın Kayıt Formu (Firebase)</h2>
+        <h2>Yayın Kayıt Formu (Uyumlu Sürüm)</h2>
         <div class="form-group">
             <label>Yayın Adı:</label>
             <input type="text" id="stream-name" placeholder="Örn: Benim Sinemam">
@@ -140,7 +135,7 @@
     </div>
 
     <div id="player-wrapper">
-        <video id="my-video" preload="auto"></video>
+        <video id="my-video" preload="auto" playsinline></video>
         <audio id="my-audio" preload="auto"></audio>
         
         <div class="controls">
@@ -157,7 +152,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Sizin Firebase Yapılandırmanız
         const firebaseConfig = {
             apiKey: "AIzaSyCDFqL6UVgbLSYo69qEICQlMppJlxX6g8E",
             authDomain: "naberdeneme-ffa04.firebaseapp.com",
@@ -169,12 +163,10 @@
             measurementId: "G-1QZEGMF3ZV"
         };
 
-        // Firebase Başlatma
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const streamsRef = ref(db, 'yayinlar');
 
-        // HTML Elementleri
         const video = document.getElementById('my-video');
         const audio = document.getElementById('my-audio');
         const playerWrapper = document.getElementById('player-wrapper');
@@ -185,9 +177,10 @@
         const streamList = document.getElementById('stream-list');
 
         let isSeeking = false;
+        let syncInterval = null; // Eski cihazlar için zorunlu zamanlayıcı döngüsü
 
-        // 1. Firebase'e Veri Kaydetme
-        document.getElementById('save-btn').addEventListener('click', () => {
+        // 1. Firebase Veri Ekleme
+        document.getElementById('save-btn').onclick = function() {
             const name = document.getElementById('stream-name').value.trim();
             const videoUrl = document.getElementById('video-link').value.trim();
             const audioUrl = document.getElementById('audio-link').value.trim();
@@ -197,7 +190,6 @@
                 return;
             }
 
-            // Firebase Realtime Database'e itiyoruz
             push(streamsRef, {
                 name: name,
                 videoUrl: videoUrl,
@@ -206,26 +198,25 @@
                 document.getElementById('stream-name').value = '';
                 document.getElementById('video-link').value = '';
                 document.getElementById('audio-link').value = '';
-            }).catch(err => alert("Hata oluştu: " + err.message));
-        });
+            }).catch(err => alert("Hata: " + err.message));
+        };
 
-        // 2. Firebase'den Canlı Veri Çekme ve Listeleme
+        // 2. Firebase Listeleme
         onValue(streamsRef, (snapshot) => {
             streamList.innerHTML = '';
             const data = snapshot.val();
-            
             if (!data) {
                 streamList.innerHTML = '<li>Henüz kayıtlı yayın yok.</li>';
                 return;
             }
 
-            // Objeyi listeye döküyoruz
             Object.keys(data).forEach(key => {
                 const stream = data[key];
                 const li = document.createElement('li');
                 
-                // Tıklayınca oynatıcıyı başlat
-                li.addEventListener('click', () => startPlayer(stream.videoUrl, stream.audioUrl));
+                li.onclick = function() {
+                    startPlayer(stream.videoUrl, stream.audioUrl);
+                };
                 
                 li.innerHTML = `
                     <span><strong>${stream.name}</strong></span>
@@ -234,78 +225,105 @@
                 streamList.appendChild(li);
             });
 
-            // Silme butonlarına olay ekleme
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Satırın tıklama olayını engelle
-                    const id = btn.getAttribute('data-id');
+            // Silme butonları
+            const deleteButtons = document.querySelectorAll('.delete-btn');
+            for(let i=0; i<deleteButtons.length; i++) {
+                deleteButtons[i].onclick = function(e) {
+                    e.stopPropagation();
+                    const id = this.getAttribute('data-id');
                     remove(ref(db, 'yayinlar/' + id));
-                });
-            });
+                };
+            }
         });
 
-        // 3. Oynatıcı Motoru ve Senkronizasyon
+        // 3. Projeksiyon ve Eski Cihazlar İçin Güçlendirilmiş Oynatıcı Başlatıcı
         function startPlayer(videoUrl, audioUrl) {
             video.src = videoUrl;
             audio.src = audioUrl;
             playerWrapper.style.display = "block";
 
+            // Eski cihazlarda takılmayı önlemek için direkt yükle emri veriyoruz
+            video.load();
+            audio.load();
+
+            // Tam ekran kodları (Eski Android TV/Projeksiyon uyumlu varyasyonlar)
             if (playerWrapper.requestFullscreen) {
                 playerWrapper.requestFullscreen();
             } else if (playerWrapper.webkitRequestFullscreen) {
                 playerWrapper.webkitRequestFullscreen();
+            } else if (playerWrapper.mozRequestFullScreen) {
+                playerWrapper.mozRequestFullScreen();
+            } else if (playerWrapper.msRequestFullscreen) {
+                playerWrapper.msRequestFullscreen();
             }
 
-            video.load();
-            audio.load();
+            // Garanti başlatma: Tarayıcı 'canplay' olayını kaçırırsa diye direkt oynatmayı deniyoruz
+            video.play().catch(()=>{});
+            audio.play().catch(()=>{});
+            playPauseBtn.innerText = "⏸";
 
-            video.oncanplaythrough = () => {
-                video.play();
-                audio.play();
-            };
+            // Projeksiyon için kritik adım: Donanımsal gecikmeleri yakalamak adına 
+            // her 150 milisaniyede bir (saniyede ~7 kez) arka planda zorunlu senkronizasyon kontrolü başlatıyoruz.
+            if(syncInterval) clearInterval(syncInterval);
+            syncInterval = setInterval(forceSyncCheck, 150);
         }
 
-        function togglePlay() {
+        // 4. Agresif Senkronizasyon Motoru (Projeksiyon için)
+        function forceSyncCheck() {
+            if (isSeeking || video.paused) return;
+
+            // İlerleme çubuğu ve süre yazısını güncelle
+            const percentage = (video.currentTime / video.duration) * 100;
+            if(!isNaN(percentage)) {
+                progressBar.style.width = percentage + "%";
+                timeDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
+            }
+
+            // Hassasiyeti 0.15 saniyeye indirdik. Projeksiyon cihazı videoyu çözerken 
+            // ufacık bir yavaşlama yaşarsa ses anında duraksayıp videonun hizasına çekilir.
+            const diff = video.currentTime - audio.currentTime;
+            if (Math.abs(diff) > 0.15) {
+                audio.currentTime = video.currentTime;
+                // Eğer ses tamamen geride kalıp donduysa tekrar oynatmayı tetikle
+                if(audio.paused && !video.paused) audio.play().catch(()=>{});
+            }
+        }
+
+        // Duraklat / Devam Et
+        playPauseBtn.onclick = function() {
             if (video.paused) {
-                video.play();
-                audio.play();
+                video.play().catch(()=>{});
+                audio.play().catch(()=>{});
                 playPauseBtn.innerText = "⏸";
             } else {
                 video.pause();
                 audio.pause();
                 playPauseBtn.innerText = "▶";
             }
-        }
-        playPauseBtn.addEventListener('click', togglePlay);
-
-        // Canlı Süre Takibi ve Otomatik Kayma Önleyici Eşitleme
-        video.ontimeupdate = () => {
-            if (!isSeeking) {
-                const percentage = (video.currentTime / video.duration) * 100;
-                progressBar.style.width = percentage + "%";
-                timeDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
-
-                // Ses kaymasını önleyen kritik 0.3 sn kontrolü
-                if (Math.abs(video.currentTime - audio.currentTime) > 0.3) {
-                    audio.currentTime = video.currentTime;
-                }
-            }
         };
 
-        // İlerleme Çubuğundan İleri/Geri Sarma (Scrubbing)
-        progressContainer.addEventListener('click', (e) => {
+        // 5. İlerletme Çubuğu Tıklama Algılayıcısı
+        progressContainer.onclick = function(e) {
             isSeeking = true;
             const rect = progressContainer.getBoundingClientRect();
             const clickX = e.clientX - rect.left;
             const clickPercentage = clickX / rect.width;
             const newTime = clickPercentage * video.duration;
             
+            // Önce videoyu ardından sesi eş zamanlı yeni saniyeye atıyoruz
             video.currentTime = newTime;
             audio.currentTime = newTime;
             
             progressBar.style.width = (clickPercentage * 100) + "%";
-            isSeeking = false;
-        });
+            
+            // Eski cihazlarda atlama sonrası sesin oynatılmaya devam ettiğinden emin oluyoruz
+            if(!video.paused) {
+                audio.play().catch(()=>{});
+            }
+            
+            // Cihazın hafızasına toparlanması için kısa bir süre tanıyoruz
+            setTimeout(() => { isSeeking = false; }, 200);
+        };
 
         function formatTime(seconds) {
             if (isNaN(seconds)) return "00:00";
@@ -315,17 +333,25 @@
         }
 
         function exitPlayer() {
+            if(syncInterval) clearInterval(syncInterval);
             video.pause();
             audio.pause();
             playerWrapper.style.display = "none";
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if(document.exitFullscreen) document.exitFullscreen();
+                else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
             }
         }
-        document.getElementById('close-btn').addEventListener('click', exitPlayer);
+        document.getElementById('close-btn').onclick = exitPlayer;
 
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) exitPlayer();
+        // Kumandadan veya ESC ile tam ekrandan çıkılırsa temizle
+        const fsEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
+        fsEvents.forEach(evt => {
+            document.addEventListener(evt, () => {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
+                    exitPlayer();
+                }
+            });
         });
     </script>
 </body>
