@@ -91,13 +91,29 @@
             z-index: 9999;
         }
         video { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* Akıllı Gizleme için Geçiş Efekti Eklendi */
         .controls {
             position: absolute;
             bottom: 0; left: 0; width: 100%;
             background: rgba(0,0,0,0.85);
             padding: 20px;
             box-sizing: border-box;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            opacity: 1;
+            transform: translateY(0);
         }
+        
+        /* Kontroller gizlendiğinde tetiklenecek CSS */
+        #player-wrapper.hide-interface {
+            cursor: none !important;
+        }
+        #player-wrapper.hide-interface .controls {
+            opacity: 0;
+            transform: translateY(100%);
+            pointer-events: none; /* Gizliyken yanlışlıkla tıklanmasını önler */
+        }
+
         .control-inside {
             display: flex;
             align-items: center;
@@ -168,7 +184,6 @@
     </div>
 
     <script>
-        // KRİTİK BÖLGESEL DÜZELTME: Avrupa sunucu mimarisine tam uyumlu REST URL yapısı
         var baseDbUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/";
         var restUrl = baseDbUrl + "yayinlar.json";
 
@@ -183,8 +198,10 @@
 
         var isSeeking = false;
         var syncInterval = null;
+        
+        // Zamanlayıcı için yeni değişken
+        var hideTimeout = null;
 
-        // 1. Veri Okuma Motoru (TV ve Telefon Uyarı Engelleri Kaldırılmış REST GET)
         function loadStreams() {
             streamList.innerHTML = '<li>Yükleniyor...</li>';
             
@@ -268,7 +285,6 @@
             }
         }
 
-        // 2. Yeni Kayıt Ekleme Motoru (Avrupa Altyapısı Uyumlu REST POST)
         document.getElementById('save-btn').onclick = function() {
             var name = document.getElementById('stream-name').value.trim();
             var videoUrl = document.getElementById('video-link').value.trim();
@@ -310,7 +326,6 @@
             xhr.send(payload);
         };
 
-        // 3. Veri Silme Motoru (REST DELETE)
         function deleteStream(id) {
             var deleteUrl = baseDbUrl + "yayinlar/" + id + ".json";
             var xhr = new XMLHttpRequest();
@@ -331,7 +346,6 @@
         document.getElementById('refresh-btn').onclick = loadStreams;
         window.onload = loadStreams;
 
-        // 4. Gelişmiş Medya Oynatıcı Kontrol Altyapısı
         function startPlayer(videoUrl, audioUrl, subtitleUrl) {
             var oldTracks = video.getElementsByTagName('track');
             while(oldTracks.length > 0) { video.removeChild(oldTracks[0]); }
@@ -362,7 +376,32 @@
 
             if(syncInterval) clearInterval(syncInterval);
             syncInterval = setInterval(smoothSyncCheck, 250);
+            
+            // Oynatıcı başladığında gizleme mekanizmasını başlat
+            resetHideTimer();
         }
+
+        // Akıllı Arayüz Gizleme Fonksiyonları
+        function resetHideTimer() {
+            // Arayüzü görünür kıl (CSS sınıfını kaldır)
+            playerWrapper.classList.remove('hide-interface');
+            
+            // Mevcut zamanlayıcıyı sıfırla
+            if (hideTimeout) clearTimeout(hideTimeout);
+            
+            // Eğer video duraklatılmışsa otomatik gizleme yapma (kullanıcı rahat rahat incelesin)
+            if (video.paused) return;
+
+            // 3 saniye (3000 ms) boyunca hareket olmazsa gizle
+            hideTimeout = setTimeout(function() {
+                playerWrapper.classList.add('hide-interface');
+            }, 3000);
+        }
+
+        // Fare hareket ettikçe veya ekrana dokunuldukça süreyi sıfırla
+        playerWrapper.onmousemove = resetHideTimer;
+        playerWrapper.onclick = resetHideTimer;
+        playerWrapper.ontouchstart = resetHideTimer;
 
         function smoothSyncCheck() {
             if (isSeeking || video.paused || video.seeking) return;
@@ -402,10 +441,13 @@
                 video.play().catch(function(){});
                 audio.play().catch(function(){});
                 playPauseBtn.innerText = "⏸";
+                resetHideTimer(); // Oynatılınca zamanlayıcıyı yeniden kur
             } else {
                 video.pause();
                 audio.pause();
                 playPauseBtn.innerText = "▶";
+                playerWrapper.classList.remove('hide-interface'); // Durunca paneli geri getir
+                if (hideTimeout) clearTimeout(hideTimeout); // Dururken gizleme
             }
         };
 
@@ -421,6 +463,7 @@
             progressBar.style.width = (clickPercentage * 100) + "%";
             
             setTimeout(function() { isSeeking = false; }, 400);
+            resetHideTimer();
         };
 
         function formatTime(seconds) {
@@ -432,9 +475,11 @@
 
         function exitPlayer() {
             if(syncInterval) clearInterval(syncInterval);
+            if (hideTimeout) clearTimeout(hideTimeout);
             video.pause();
             audio.pause();
             audio.playbackRate = 1.0;
+            playerWrapper.classList.remove('hide-interface');
             playerWrapper.style.display = "none";
             
             var de = document;
