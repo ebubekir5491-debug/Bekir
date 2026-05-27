@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Senkronize TV Oynatıcı (REST API Kararlı Sürüm)</title>
+    <title>Firebase Senkronize TV Oynatıcı (Avrupa Sunucusu Uyumlu)</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -78,7 +78,6 @@
             cursor: pointer;
             font-size: 14px;
         }
-        
         video::cue {
             background: rgba(0, 0, 0, 0.7);
             color: #fff;
@@ -113,13 +112,10 @@
         }
         .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 6px; }
         .time-display { font-size: 16px; min-width: 110px; text-align: center; }
-        
-        /* Yenileme butonu alanı */
         .refresh-area { text-align: right; margin-bottom: 10px; }
         .refresh-btn { background: #393e46; padding: 5px 10px; font-size: 14px; width: auto; display: inline-block; }
     </style>
-
-    </head>
+</head>
 <body>
 
     <div class="container">
@@ -172,8 +168,9 @@
     </div>
 
     <script>
-        // Sizin veritabanı REST API ana linkiniz (Uzantısına .json eklemek TV entegrasyonu sağlar)
-        var restUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/yayinlar.json";
+        // KRİTİK BÖLGESEL DÜZELTME: Avrupa sunucu mimarisine tam uyumlu REST URL yapısı
+        var baseDbUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/";
+        var restUrl = baseDbUrl + "yayinlar.json";
 
         var video = document.getElementById('my-video');
         var audio = document.getElementById('my-audio');
@@ -187,7 +184,7 @@
         var isSeeking = false;
         var syncInterval = null;
 
-        // 1. TV TARAYICI UYUMLU VERİ OKUMA SİSTEMİ (AJAX GET)
+        // 1. Veri Okuma Motoru (TV ve Telefon Uyarı Engelleri Kaldırılmış REST GET)
         function loadStreams() {
             streamList.innerHTML = '<li>Yükleniyor...</li>';
             
@@ -196,17 +193,20 @@
             xhr.onreadystatechange = function () {
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
-                        var data = JSON.parse(xhr.responseText);
-                        renderList(data);
+                        try {
+                            var data = JSON.parse(xhr.responseText);
+                            renderList(data);
+                        } catch(e) {
+                            streamList.innerHTML = '<li>Veri çözümleme hatası!</li>';
+                        }
                     } else {
-                        streamList.innerHTML = '<li>Veriler alınamadı! (Hata kodu: ' + xhr.status + ')</li>';
+                        streamList.innerHTML = '<li>Bağlantı Kurulamadı! (Firebase URL veya Kural hatası. Kod: ' + xhr.status + ')</li>';
                     }
                 }
             };
             xhr.send();
         }
 
-        // Listeyi ekrana basan fonksiyon (Eski tarayıcılar için optimize)
         function renderList(data) {
             streamList.innerHTML = '';
             if (!data) {
@@ -247,7 +247,6 @@
                 }
             }
 
-            // Silme butonları dinleyicisi
             var deleteButtons = streamList.getElementsByTagName('button');
             for(var i=0; i<deleteButtons.length; i++) {
                 deleteButtons[i].onclick = function(e) {
@@ -269,7 +268,7 @@
             }
         }
 
-        // 2. TV TARAYICI UYUMLU VERİ KAYDETME SİSTEMİ (AJAX POST)
+        // 2. Yeni Kayıt Ekleme Motoru (Avrupa Altyapısı Uyumlu REST POST)
         document.getElementById('save-btn').onclick = function() {
             var name = document.getElementById('stream-name').value.trim();
             var videoUrl = document.getElementById('video-link').value.trim();
@@ -302,18 +301,18 @@
                         document.getElementById('audio-link').value = '';
                         document.getElementById('subtitle-link').value = '';
                         document.getElementById('stream-password').value = '';
-                        loadStreams(); // Listeyi güncelle
+                        loadStreams(); 
                     } else {
-                        alert("Kayıt hatası! Kod: " + xhr.status);
+                        alert("Firebase Kayıt Reddedildi! Kuralları (Rules) kontrol edin. Kod: " + xhr.status);
                     }
                 }
             };
             xhr.send(payload);
         };
 
-        // 3. TV TARAYICI UYUMLU VERİ SİLME SİSTEMİ (AJAX DELETE)
+        // 3. Veri Silme Motoru (REST DELETE)
         function deleteStream(id) {
-            var deleteUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/yayinlar/" + id + ".json";
+            var deleteUrl = baseDbUrl + "yayinlar/" + id + ".json";
             var xhr = new XMLHttpRequest();
             xhr.open("DELETE", deleteUrl, true);
             xhr.onreadystatechange = function() {
@@ -322,20 +321,17 @@
                         alert("Yayın silindi.");
                         loadStreams();
                     } else {
-                        alert("Silme hatası.");
+                        alert("Silme başarısız.");
                     }
                 }
             };
             xhr.send();
         }
 
-        // Manuel yenileme butonu olayı
         document.getElementById('refresh-btn').onclick = loadStreams;
-
-        // Sayfa açıldığında otomatik verileri getir
         window.onload = loadStreams;
 
-        // 4. Medya Oynatıcı ve Akıllı Ses Senkronizasyonu (Değişmedi)
+        // 4. Gelişmiş Medya Oynatıcı Kontrol Altyapısı
         function startPlayer(videoUrl, audioUrl, subtitleUrl) {
             var oldTracks = video.getElementsByTagName('track');
             while(oldTracks.length > 0) { video.removeChild(oldTracks[0]); }
@@ -416,4 +412,45 @@
         progressContainer.onclick = function(e) {
             isSeeking = true;
             audio.playbackRate = 1.0;
-            var rect = progressContainer.getBoundingClientRect
+            var rect = progressContainer.getBoundingClientRect();
+            var clickPercentage = (e.clientX - rect.left) / rect.width;
+            var newTime = clickPercentage * video.duration;
+            
+            video.currentTime = newTime;
+            audio.currentTime = newTime;
+            progressBar.style.width = (clickPercentage * 100) + "%";
+            
+            setTimeout(function() { isSeeking = false; }, 400);
+        };
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "00:00";
+            var mins = Math.floor(seconds / 60);
+            var secs = Math.floor(seconds % 60);
+            return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+        }
+
+        function exitPlayer() {
+            if(syncInterval) clearInterval(syncInterval);
+            video.pause();
+            audio.pause();
+            audio.playbackRate = 1.0;
+            playerWrapper.style.display = "none";
+            
+            var de = document;
+            if (de.fullscreenElement || de.webkitFullscreenElement) {
+                if(de.exitFullscreen) de.exitFullscreen();
+                else if(de.webkitExitFullscreen) de.webkitExitFullscreen();
+            }
+        }
+        document.getElementById('close-btn').onclick = exitPlayer;
+
+        document.addEventListener('fullscreenchange', function() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) exitPlayer();
+        });
+        document.addEventListener('webkitfullscreenchange', function() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) exitPlayer();
+        });
+    </script>
+</body>
+</html>
