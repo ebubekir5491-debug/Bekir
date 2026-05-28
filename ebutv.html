@@ -91,9 +91,8 @@
             background: black;
             z-index: 9999;
         }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
         
-        /* Özel Altyazı Katmanı */
         .custom-subtitle-overlay {
             position: absolute;
             bottom: 12%;
@@ -193,8 +192,8 @@
     <input type="file" id="global-sub-input" accept=".vtt,.srt">
 
     <div id="player-wrapper">
-        <video id="my-video" preload="auto" playsinline></video>
-        <audio id="my-audio" preload="auto"></audio>
+        <video id="my-video" preload="auto" playsinline muted crossorigin="anonymous"></video>
+        <audio id="my-audio" preload="auto" crossorigin="anonymous"></audio>
         
         <div class="custom-subtitle-overlay" id="sub-overlay" style="display: none;">
             <span class="custom-subtitle-text" id="sub-text"></span>
@@ -213,8 +212,10 @@
     </div>
 
     <script>
+        // Klasör yapısı 'tv_oynatici_yayinlar' olarak izole edildi
         var baseDbUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/";
-        var restUrl = baseDbUrl + "yayinlar.json";
+        var folderName = "tv_oynatici_yayinlar"; 
+        var restUrl = baseDbUrl + folderName + ".json";
 
         var video = document.getElementById('my-video');
         var audio = document.getElementById('my-audio');
@@ -233,9 +234,9 @@
         var syncInterval = null;
         var hideTimeout = null;
         
-        var activeSubtitles = [];      // Oynatıcıdaki güncel altyazı verisi
-        var temporaryLocalSubs = {};   // Geçici yerel altyazıları hafızada tutan nesne { streamKey: parsedSubData }
-        var currentTargetKey = null;   // O an altyazı yüklenen yayının benzersiz ID'si
+        var activeSubtitles = [];      
+        var temporaryLocalSubs = {};   
+        var currentTargetKey = null;   
 
         function loadStreams() {
             streamList.innerHTML = '<li>Yükleniyor...</li>';
@@ -269,12 +270,10 @@
                     var stream = data[key];
                     var li = document.createElement('li');
                     
-                    // Satırın sol tarafındaki isim alanı
                     var titleSpan = document.createElement('span');
                     titleSpan.className = 'stream-title-area';
                     titleSpan.innerText = stream.name;
                     
-                    // İsme tıklayınca video başlasın
                     titleSpan.setAttribute('data-id', key);
                     titleSpan.setAttribute('data-video', stream.videoUrl);
                     titleSpan.setAttribute('data-audio', stream.audioUrl || '');
@@ -297,16 +296,13 @@
                     
                     li.appendChild(titleSpan);
 
-                    // Sağ taraftaki butonlar grubu
                     var actionsDiv = document.createElement('div');
                     actionsDiv.className = 'stream-actions';
 
-                    // 1. YEREL ALTYAZI BUTONU
                     var subBtn = document.createElement('button');
                     subBtn.className = 'action-btn sub-select-btn';
                     subBtn.setAttribute('data-id', key);
                     
-                    // Eğer bu yayın için daha önce yerel altyazı seçilmişse yeşil yap
                     if (temporaryLocalSubs[key]) {
                         subBtn.innerText = "📁 Altyazı Seçildi";
                         subBtn.classList.add('loaded');
@@ -317,11 +313,10 @@
                     subBtn.onclick = function(e) {
                         if (e && e.stopPropagation) e.stopPropagation();
                         currentTargetKey = this.getAttribute('data-id');
-                        globalSubInput.click(); // Dosya seçiciyi aç
+                        globalSubInput.click(); 
                     };
                     actionsDiv.appendChild(subBtn);
 
-                    // 2. SİLME BUTONU
                     var delBtn = document.createElement('button');
                     delBtn.className = 'action-btn delete-btn';
                     delBtn.innerText = "Sil";
@@ -348,7 +343,6 @@
             }
         }
 
-        // Global dosya seçici tetiklendiğinde çalışacak kısım
         globalSubInput.onchange = function() {
             var file = this.files[0];
             if (!file || !currentTargetKey) return;
@@ -356,12 +350,10 @@
             var reader = new FileReader();
             reader.onload = function(evt) {
                 var text = evt.target.result;
-                // Seçilen altyazıyı ayrıştırıp geçici nesnemize ID tabanlı kaydediyoruz
                 temporaryLocalSubs[currentTargetKey] = parseSubtitleToArray(text);
-                
-                alert("Yerel altyazı bu yayın için hafızaya alındı. Yayını başlattığınızda geçerli olacaktır.");
-                globalSubInput.value = ""; // Inputu sıfırla
-                loadStreams(); // Butonun rengini yeşile döndürmek için listeyi tazele
+                alert("Yerel altyazı bu yayın için hafızaya alındı.");
+                globalSubInput.value = ""; 
+                loadStreams(); 
             };
             reader.readAsText(file, "UTF-8");
         };
@@ -400,7 +392,7 @@
         };
 
         function deleteStream(id) {
-            var deleteUrl = baseDbUrl + "yayinlar/" + id + ".json";
+            var deleteUrl = baseDbUrl + folderName + "/" + id + ".json";
             var xhr = new XMLHttpRequest();
             xhr.open("DELETE", deleteUrl, true);
             xhr.onreadystatechange = function() {
@@ -419,41 +411,46 @@
         document.getElementById('refresh-btn').onclick = loadStreams;
         window.onload = loadStreams;
 
-        // Oynatıcıyı Başlatma Fonksiyonu
         function startPlayer(streamKey, videoUrl, audioUrl, subtitleUrl) {
             activeSubtitles = [];
             subOverlay.style.display = "none";
             subTextElement.innerText = "";
             
+            video.muted = true; 
             video.src = videoUrl;
             
             if (audioUrl && audioUrl !== "") {
                 audio.src = audioUrl;
-                video.muted = true;
             } else {
                 audio.removeAttribute('src');
-                video.muted = false;
             }
 
-            // ÖNCELİK KONTROLÜ: Eğer bu yayına ait yerel bir altyazı seçilmişse onu kullan
             if (temporaryLocalSubs[streamKey] && temporaryLocalSubs[streamKey].length > 0) {
                 activeSubtitles = temporaryLocalSubs[streamKey];
             } 
-            // Yerel yükleme yoksa ve veritabanında URL varsa uzak altyazıyı çek
             else if (subtitleUrl && subtitleUrl !== "") {
                 fetchRemoteSubtitle(subtitleUrl);
             }
 
             playerWrapper.style.display = "block";
+            
             video.load();
             if(audio.src) audio.load();
 
-            if (playerWrapper.requestFullscreen) playerWrapper.requestFullscreen();
-            else if (playerWrapper.webkitRequestFullscreen) playerWrapper.webkitRequestFullscreen();
+            var requestFS = playerWrapper.requestFullscreen || playerWrapper.webkitRequestFullscreen;
 
-            video.play().catch(function(){});
-            if(audio.src) audio.play().catch(function(){});
-            playPauseBtn.innerText = "⏸";
+            video.play().then(function() {
+                if(audio.src) {
+                    audio.play().catch(function(){});
+                } else {
+                    setTimeout(function() { video.muted = false; }, 150);
+                }
+                playPauseBtn.innerText = "⏸";
+                if (requestFS) requestFS.call(playerWrapper);
+            }).catch(function(err) {
+                console.log("Oynatma bloke edildi, buton bekleniyor: ", err);
+                playPauseBtn.innerText = "▶";
+            });
 
             if(syncInterval) clearInterval(syncInterval);
             syncInterval = setInterval(smoothSyncCheck, 250);
@@ -471,7 +468,6 @@
             xhr.send();
         }
 
-        // VTT ve SRT Metinlerini Ortak Olarak Hafıza Dizisine Çeviren Fonksiyon
         function parseSubtitleToArray(text) {
             var list = [];
             var cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -532,7 +528,6 @@
             return (hours * 3600) + (minutes * 60) + seconds + ms;
         }
 
-        // Video oynatılırken saniyeleri tarayan JS Altyazı Motoru
         video.ontimeupdate = function() {
             if (!activeSubtitles || activeSubtitles.length === 0) return;
             
@@ -597,6 +592,7 @@
 
         playPauseBtn.onclick = function() {
             if (video.paused) {
+                video.muted = false; 
                 video.play().catch(function(){});
                 if(audio.src) audio.play().catch(function(){});
                 playPauseBtn.innerText = "⏸";
