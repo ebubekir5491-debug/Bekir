@@ -2,87 +2,131 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Senkronize TV Oynatıcı</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mobil TV Oynatıcı</title>
     <style>
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #121212;
             color: #ffffff;
             margin: 0;
-            padding: 20px;
-            text-align: center;
+            padding: 12px;
+            -webkit-tap-highlight-color: transparent;
         }
-        .container, .list-container {
-            width: 90%;
-            max-width: 650px;
+        
+        /* Şifre Ekranı */
+        #auth-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100000;
+            padding: 20px;
+        }
+        .auth-container {
             background: #1e1e1e;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 0 auto 20px auto;
-            box-sizing: border-box;
-            text-align: left;
+            padding: 25px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
         }
-        h2, h3 { text-align: center; color: #00adb5; margin-top: 0; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #eeeeee; }
+
+        /* Ana İçerik */
+        #main-content { display: none; }
+        
+        .section-card {
+            background: #1e1e1e;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        
+        h3 { 
+            margin-top: 0; 
+            margin-bottom: 15px; 
+            color: #00adb5; 
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 6px; color: #aaaaaa; font-size: 14px; }
+        
         input[type="text"], input[type="url"], input[type="password"] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #393e46;
-            background: #222831;
+            padding: 14px;
+            border: 1px solid #333;
+            background: #252a34;
             color: #fff;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
         }
+        input:focus { border-color: #00adb5; }
+        
+        /* Büyük Mobil Butonları */
         button {
             width: 100%;
             padding: 15px;
             background: #00adb5;
             border: none;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
+            active-background: #008c92;
         }
+        button:active { opacity: 0.9; transform: scale(0.98); }
+        
+        .refresh-btn {
+            background: #2d3748;
+            padding: 10px;
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: normal;
+        }
+
+        /* Liste Tasarımı */
         ul { list-style: none; padding: 0; margin: 0; }
         li {
-            padding: 18px;
-            background: #222831;
-            margin-bottom: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            position: relative;
+            padding: 15px;
+            background: #252a34;
+            margin-bottom: 10px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
+            border-left: 4px solid #00adb5;
         }
         .stream-title-area {
             flex-grow: 1;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 500;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            padding-right: 5px;
         }
-        .stream-actions {
-            display: flex;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .action-btn {
+        .delete-btn {
+            background: #ff2e63;
+            color: white;
             width: auto;
-            padding: 6px 12px;
+            padding: 8px 16px;
             font-size: 13px;
-            border-radius: 4px;
             font-weight: normal;
+            border-radius: 6px;
         }
-        .sub-select-btn { background: #f0a500; color: #fff; display: none; } /* Harici oynatıcıda yerel altyazı desteklenmediği için gizlendi */
-        .delete-btn { background: #ff2e63; color: white; }
-        
+
+        /* Web Player Yapısı */
         #player-wrapper {
             display: none;
             position: fixed;
@@ -90,102 +134,97 @@
             background: black;
             z-index: 9999;
         }
-        video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+        video { width: 100%; height: 100%; object-fit: contain; }
         
+        /* Altyazı */
         .custom-subtitle-overlay {
             position: absolute;
-            bottom: 12%;
-            left: 5%;
-            width: 90%;
-            text-align: center;
-            pointer-events: none;
-            z-index: 10000;
+            bottom: 18%; left: 5%; width: 90%;
+            text-align: center; pointer-events: none; z-index: 10000;
         }
         .custom-subtitle-text {
             display: inline-block;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             color: #ffffff;
-            font-size: 24px;
-            padding: 8px 18px;
+            font-size: 16px;
+            padding: 6px 12px;
             border-radius: 6px;
             line-height: 1.4;
-            white-space: pre-line;
-            text-shadow: 2px 2px 3px rgba(0,0,0,1);
-            font-weight: 500;
-        }
-        @media (max-width: 768px) {
-            .custom-subtitle-text { font-size: 16px; padding: 6px 12px; }
-            .custom-subtitle-overlay { bottom: 18%; }
+            text-shadow: 1px 1px 2px rgba(0,0,0,1);
         }
 
+        /* Mobil Kontrol Paneli */
         .controls {
             position: absolute;
             bottom: 0; left: 0; width: 100%;
-            background: rgba(0,0,0,0.85);
-            padding: 20px;
-            box-sizing: border-box;
-            transition: opacity 0.5s ease, transform 0.5s ease;
-            opacity: 1;
-            transform: translateY(0);
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            transition: opacity 0.3s, transform 0.3s;
             z-index: 10001;
         }
-        
-        #player-wrapper.hide-interface { cursor: none !important; }
         #player-wrapper.hide-interface .controls {
-            opacity: 0;
-            transform: translateY(100%);
-            pointer-events: none;
+            opacity: 0; transform: translateY(100%); pointer-events: none;
         }
-
-        .control-inside { display: flex; align-items: center; gap: 15px; }
+        .control-inside { display: flex; align-items: center; gap: 12px; }
         .control-btn {
             background: none; border: none; color: white;
-            font-size: 26px; cursor: pointer; width: auto; padding: 0 10px;
+            font-size: 22px; width: auto; padding: 5px;
         }
         .progress-container {
-            flex-grow: 1; position: relative; cursor: pointer; height: 14px; background: #555; border-radius: 6px;
+            flex-grow: 1; height: 10px; background: #444; border-radius: 5px; position: relative;
         }
-        .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 6px; }
-        .time-display { font-size: 16px; min-width: 110px; text-align: center; }
-        .refresh-area { text-align: right; margin-bottom: 10px; }
-        .refresh-btn { background: #393e46; padding: 5px 10px; font-size: 14px; width: auto; display: inline-block; }
+        .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 5px; }
+        .time-display { font-size: 13px; min-width: 90px; text-align: center; color: #ccc; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Yayın Kayıt Formu</h2>
-        <div class="form-group">
-            <label>Yayın Adı:</label>
-            <input type="text" id="stream-name" placeholder="Örn: Benim Sinemam">
+    <!-- Giriş Şifre Ekranı -->
+    <div id="auth-screen">
+        <div class="auth-container">
+            <h3>Sistem Girişi</h3>
+            <div class="form-group">
+                <input type="password" id="global-login-password" placeholder="Günün Şifresi (GGAAAA)" inputmode="numeric">
+            </div>
+            <button id="auth-submit-btn">Giriş Yap</button>
         </div>
-        <div class="form-group">
-            <label>Video Linki (URL):</label>
-            <input type="url" id="video-link" placeholder="https://example.com/video.mp4">
-        </div>
-        <div class="form-group">
-            <label>Ses Linki (URL - İsteğe Bağlı):</label>
-            <input type="url" id="audio-link" placeholder="https://example.com/ses.mp3">
-        </div>
-        <div class="form-group">
-            <label>Altyazı Linki (URL - İsteğe Bağlı):</label>
-            <input type="url" id="subtitle-link" placeholder="https://example.com/altyazi.vtt">
-        </div>
-        <div class="form-group">
-            <label>Giriş ve Silme Şifresi (İsteğe Bağlı):</label>
-            <input type="password" id="stream-password" placeholder="Şifre belirleyin">
-        </div>
-        <button id="save-btn">Kaydet</button>
     </div>
 
-    <div class="list-container">
-        <div class="refresh-area">
-            <button class="refresh-btn" id="refresh-btn">🔄 Listeyi Yenile</button>
+    <!-- Ana Sayfa İçeriği -->
+    <div id="main-content">
+        <!-- Listeyi Yenile -->
+        <button class="refresh-btn" id="refresh-btn">🔄 Listeyi Yenile</button>
+
+        <!-- Yayın Listesi -->
+        <div class="section-card">
+            <h3>Kayıtlı Yayınlar</h3>
+            <ul id="stream-list">Yükleniyor...</ul>
         </div>
-        <h3>Kayıtlı Yayınlar</h3>
-        <ul id="stream-list">Yükleniyor...</ul>
+
+        <!-- Kayıt Formu -->
+        <div class="section-card">
+            <h3>Yeni Yayın Ekle</h3>
+            <div class="form-group">
+                <label>Yayın Adı:</label>
+                <input type="text" id="stream-name" placeholder="Örn: Sinema Kanalı">
+            </div>
+            <div class="form-group">
+                <label>Video Linki (URL):</label>
+                <input type="url" id="video-link" placeholder="https://.../video.mp4">
+            </div>
+            <div class="form-group">
+                <label>Ses Linki (İsteğe Bağlı):</label>
+                <input type="url" id="audio-link" placeholder="Boş bırakabilirsiniz">
+            </div>
+            <div class="form-group">
+                <label>Altyazı Linki (İsteğe Bağlı):</label>
+                <input type="url" id="subtitle-link" placeholder="Boş bırakabilirsiniz">
+            </div>
+            <button id="save-btn" style="background: #206a5d; margin-top: 5px;">Sisteme Kaydet</button>
+        </div>
     </div>
 
+    <!-- Web Oynatıcı -->
     <div id="player-wrapper">
         <video id="my-video" preload="auto" playsinline muted crossorigin="anonymous"></video>
         <audio id="my-audio" preload="auto" crossorigin="anonymous"></audio>
@@ -200,8 +239,8 @@
                 <div class="progress-container" id="progress-container">
                     <div class="progress-bar" id="progress-bar"></div>
                 </div>
-                <div class="time-display" id="time-display">00:00 / 00:00</div>
-                <button class="control-btn" id="close-btn">❌ Kapat</button>
+                <div class="time-display" id="time-display">00:00</div>
+                <button class="control-btn" id="close-btn">❌</button>
             </div>
         </div>
     </div>
@@ -219,7 +258,6 @@
         var timeDisplay = document.getElementById('time-display');
         var playPauseBtn = document.getElementById('play-pause-btn');
         var streamList = document.getElementById('stream-list');
-        
         var subOverlay = document.getElementById('sub-overlay');
         var subTextElement = document.getElementById('sub-text');
 
@@ -228,22 +266,34 @@
         var hideTimeout = null;
         var activeSubtitles = [];      
 
+        // Günlük Tarih Şifresi (GGAAAA formatı)
+        function generateDailyPassword() {
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var yy = String(today.getFullYear()).substring(2);
+            return dd + mm + yy;
+        }
+
+        // Giriş Kontrolü
+        document.getElementById('auth-submit-btn').onclick = function() {
+            var userInput = document.getElementById('global-login-password').value.trim();
+            if (userInput === generateDailyPassword()) {
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                loadStreams();
+            } else {
+                alert("Hatalı gün şifresi!");
+            }
+        };
+
         function loadStreams() {
             streamList.innerHTML = '<li>Yükleniyor...</li>';
             var xhr = new XMLHttpRequest();
             xhr.open("GET", restUrl, true);
             xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        try {
-                            var data = JSON.parse(xhr.responseText);
-                            renderList(data);
-                        } catch(e) {
-                            streamList.innerHTML = '<li>Veri çözümleme hatası!</li>';
-                        }
-                    } else {
-                        streamList.innerHTML = '<li>Bağlantı Kurulamadı! Kod: ' + xhr.status + '</li>';
-                    }
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    renderList(JSON.parse(xhr.responseText));
                 }
             };
             xhr.send();
@@ -252,7 +302,7 @@
         function renderList(data) {
             streamList.innerHTML = '';
             if (!data) {
-                streamList.innerHTML = '<li>Henüz kayıtlı yayın yok.</li>';
+                streamList.innerHTML = '<li>Kayıtlı yayın bulunamadı.</li>';
                 return;
             }
             for (var key in data) {
@@ -268,168 +318,97 @@
                     titleSpan.setAttribute('data-video', stream.videoUrl);
                     titleSpan.setAttribute('data-audio', stream.audioUrl || '');
                     titleSpan.setAttribute('data-sub', stream.subtitleUrl || '');
-                    titleSpan.setAttribute('data-pass', stream.password || '');
-                    titleSpan.onclick = function(e) {
-                        var k = this.getAttribute('data-id');
+                    
+                    // Yayına tıklandığında oynatma mantığı
+                    titleSpan.onclick = function() {
                         var vUrl = this.getAttribute('data-video');
                         var aUrl = this.getAttribute('data-audio');
                         var sUrl = this.getAttribute('data-sub');
-                        var realPass = this.getAttribute('data-pass');
+                        var id = this.getAttribute('data-id');
                         
-                        if (realPass && realPass !== "") {
-                            var userPass = prompt("Bu yayın için şifreyi girin:");
-                            if (userPass === null) return;
-                            if (userPass !== realPass) { alert("Hatalı şifre!"); return; }
-                        }
-                        
-                        // Cihaz tespiti yapılıyor
-                        var isAndroid = /Android/i.test(navigator.userAgent);
-                        
-                        if (isAndroid) {
-                            // Android ise telefonun kendi oynatıcı seçme sistemini aç
-                            openAndroidVideoPlayer(vUrl, stream.name);
+                        // Android telefon tespiti yapıp harici oynatıcı tetikliyoruz
+                        if (/Android/i.test(navigator.userAgent)) {
+                            openAndroidVideoPlayer(vUrl, this.innerText);
                         } else {
-                            // PC veya TV ise normal tarayıcı içi oynatıcıyı başlat
-                            startPlayer(k, vUrl, aUrl, sUrl);
+                            startPlayer(id, vUrl, aUrl, sUrl);
                         }
                     };
                     
                     li.appendChild(titleSpan);
 
-                    var actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'stream-actions';
-
                     var delBtn = document.createElement('button');
-                    delBtn.className = 'action-btn delete-btn';
+                    delBtn.className = 'delete-btn';
                     delBtn.innerText = "Sil";
                     delBtn.setAttribute('data-id', key);
-                    delBtn.setAttribute('data-pass', (stream.password || ''));
                     delBtn.onclick = function(e) {
-                        if (e && e.stopPropagation) e.stopPropagation();
-                        var id = this.getAttribute('data-id');
-                        var realPass = this.getAttribute('data-pass');
-                        if (realPass && realPass !== "") {
-                            var userPass = prompt("Silmek için şifreyi girin:");
-                            if (userPass === null) return;
-                            if (userPass !== realPass) { alert("Hatalı şifre!"); return; }
-                        } else {
-                            if(!confirm("Bu yayını silmek istediğinize emin misiniz?")) return;
-                        }
-                        deleteStream(id);
+                        if (e.stopPropagation) e.stopPropagation();
+                        if(confirm("Silinsin mi?")) deleteStream(this.getAttribute('data-id'));
                     };
-                    actionsDiv.appendChild(delBtn);
-
-                    li.appendChild(actionsDiv);
+                    
+                    li.appendChild(delBtn);
                     streamList.appendChild(li);
                 }
             }
         }
 
-        // Android Sistem Oynatıcı Seçim Menüsünü Tetikleyen Özel Fonksiyon
+        // Android MX Player / VLC / Sistem Oynatıcısını tetikleyen yapı (Doğrudan açılır)
         function openAndroidVideoPlayer(videoUrl, title) {
-            // Şemayı temizleme işlemleri (HTTP veya HTTPS linkini ayır)
             var cleanUrl = videoUrl.replace(/^https?:\/\//, '');
             var protocol = videoUrl.startsWith('https') ? 'https' : 'http';
-            
-            // Android Evrensel Video Oynatma Intent Yapısı
-            var intentUri = "intent://" + cleanUrl + "#Intent;" +
-                "scheme=" + protocol + ";" +
-                "type=video/*;" +
-                "title=" + encodeURIComponent(title) + ";" +
-                "end";
-                
-            // Gizli bir link oluşturup simüle ederek tıklatıyoruz
-            var win = window.open(intentUri, '_URI');
-            if(!win) {
-                window.location.href = intentUri;
-            }
+            var intentUri = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";type=video/*;title=" + encodeURIComponent(title) + ";end";
+            window.location.href = intentUri;
         }
 
+        // Yeni Kayıt
         document.getElementById('save-btn').onclick = function() {
             var name = document.getElementById('stream-name').value.trim();
             var videoUrl = document.getElementById('video-link').value.trim();
             var audioUrl = document.getElementById('audio-link').value.trim();
             var subtitleUrl = document.getElementById('subtitle-link').value.trim();
-            var password = document.getElementById('stream-password').value.trim();
 
-            if(!name || !videoUrl) {
-                alert("Lütfen Yayın Adı ve Video Linki alanlarını doldurun!");
-                return;
-            }
-            var payload = JSON.stringify({
-                name: name, videoUrl: videoUrl, audioUrl: audioUrl, subtitleUrl: subtitleUrl, password: password
-            });
+            if(!name || !videoUrl) { alert("Ad ve Video alanları zorunludur!"); return; }
+            
             var xhr = new XMLHttpRequest();
             xhr.open("POST", restUrl, true);
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) {
-                        alert("Başarıyla Kaydedildi!");
-                        document.getElementById('stream-name').value = '';
-                        document.getElementById('video-link').value = '';
-                        document.getElementById('audio-link').value = '';
-                        document.getElementById('subtitle-link').value = '';
-                        document.getElementById('stream-password').value = '';
-                        loadStreams(); 
-                    } else { alert("Kayıt Reddedildi! Kod: " + xhr.status); }
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    alert("Eklendi!");
+                    document.getElementById('stream-name').value = '';
+                    document.getElementById('video-link').value = '';
+                    document.getElementById('audio-link').value = '';
+                    document.getElementById('subtitle-link').value = '';
+                    loadStreams();
                 }
             };
-            xhr.send(payload);
+            xhr.send(JSON.stringify({name:name, videoUrl:videoUrl, audioUrl:audioUrl, subtitleUrl:subtitleUrl}));
         };
 
         function deleteStream(id) {
-            var deleteUrl = baseDbUrl + folderName + "/" + id + ".json";
             var xhr = new XMLHttpRequest();
-            xhr.open("DELETE", deleteUrl, true);
+            xhr.open("DELETE", baseDbUrl + folderName + "/" + id + ".json", true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    if (xhr.status === 200) { alert("Yayın silindi."); loadStreams(); } 
-                    else { alert("Silme başarısız."); }
-                }
+                if (xhr.readyState === 4 && xhr.status === 200) { loadStreams(); }
             };
             xhr.send();
         }
 
         document.getElementById('refresh-btn').onclick = loadStreams;
-        window.onload = loadStreams;
 
-        // PC ve TV İçin Çalışan Yerel Oynatıcı Fonksiyonları
+        // Tarayıcı içi oynatıcı fonksiyonları (Android harici cihazlar veya fallback durumları için aktif kalıyor)
         function startPlayer(streamKey, videoUrl, audioUrl, subtitleUrl) {
-            activeSubtitles = [];
-            subOverlay.style.display = "none";
-            subTextElement.innerText = "";
-            
-            video.muted = true; 
-            video.src = videoUrl;
-            
-            if (audioUrl && audioUrl !== "") {
-                audio.src = audioUrl;
-            } else {
-                audio.removeAttribute('src');
-            }
-
-            if (subtitleUrl && subtitleUrl !== "") {
-                fetchRemoteSubtitle(subtitleUrl);
-            }
+            activeSubtitles = []; subOverlay.style.display = "none";
+            video.muted = true; video.src = videoUrl;
+            if (audioUrl) { audio.src = audioUrl; } else { audio.removeAttribute('src'); }
+            if (subtitleUrl) { fetchRemoteSubtitle(subtitleUrl); }
 
             playerWrapper.style.display = "block";
-            
-            video.load();
-            if(audio.src) audio.load();
-
-            var requestFS = playerWrapper.requestFullscreen || playerWrapper.webkitRequestFullscreen;
+            video.load(); if(audio.src) audio.load();
 
             video.play().then(function() {
-                if(audio.src) {
-                    audio.play().catch(function(){});
-                } else {
-                    setTimeout(function() { video.muted = false; }, 150);
-                }
+                if(audio.src) audio.play().catch(function(){});
+                else setTimeout(function() { video.muted = false; }, 150);
                 playPauseBtn.innerText = "⏸";
-                if (requestFS) requestFS.call(playerWrapper);
-            }).catch(function(err) {
-                playPauseBtn.innerText = "▶";
             });
 
             if(syncInterval) clearInterval(syncInterval);
@@ -441,9 +420,7 @@
             var xhr = new XMLHttpRequest();
             xhr.open("GET", url, true);
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    activeSubtitles = parseSubtitleToArray(xhr.responseText);
-                }
+                if (xhr.readyState === 4 && xhr.status === 200) { activeSubtitles = parseSubtitleToArray(xhr.responseText); }
             };
             xhr.send();
         }
@@ -451,53 +428,38 @@
         function parseSubtitleToArray(text) {
             var list = [];
             var cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-            if (!cleanText.trim().startsWith("WEBVTT")) {
-                cleanText = cleanText.replace(/,(\d{3})/g, '.$1'); 
-            }
             var blocks = cleanText.split('\n\n');
             for (var i = 0; i < blocks.length; i++) {
                 var lines = blocks[i].split('\n');
-                var timeLine = "";
-                var textLines = [];
+                var timeLine = ""; var textLines = [];
                 for (var j = 0; j < lines.length; j++) {
                     if (lines[j].indexOf('-->') > -1) { timeLine = lines[j]; } 
                     else if (timeLine !== "" && lines[j].trim() !== "") { textLines.push(lines[j]); }
                 }
                 if (timeLine !== "") {
                     var times = timeLine.split('-->');
-                    var start = parseTime(times[0].trim());
-                    var end = parseTime(times[1].trim());
-                    var captionText = textLines.join('\n');
-                    if (start !== null && end !== null) { list.push({ start: start, end: end, text: captionText }); }
+                    var start = parseTime(times[0].trim()); var end = parseTime(times[1].trim());
+                    if (start !== null && end !== null) { list.push({ start: start, end: end, text: textLines.join('\n') }); }
                 }
             }
-            list.sort(function(a, b) { return a.start - b.start; });
             return list;
         }
 
         function parseTime(timeStr) {
-            var parts = timeStr.split(':');
-            if (parts.length < 2) return null;
-            var hours = 0, minutes = 0, secondsWithMs = "";
-            if (parts.length === 3) { hours = parseFloat(parts[0]); minutes = parseFloat(parts[1]); secondsWithMs = parts[2]; } 
-            else { minutes = parseFloat(parts[0]); secondsWithMs = parts[1]; }
-            var secParts = secondsWithMs.split('.');
-            var seconds = parseFloat(secParts[0]);
-            var ms = secParts[1] ? parseFloat('0.' + secParts[1]) : 0;
-            return (hours * 3600) + (minutes * 60) + seconds + ms;
+            var parts = timeStr.split(':'); if (parts.length < 2) return null;
+            var hours = 0, minutes = 0, seconds = 0;
+            if (parts.length === 3) { hours = parseFloat(parts[0]); minutes = parseFloat(parts[1]); seconds = parseFloat(parts[2]); } 
+            else { minutes = parseFloat(parts[0]); seconds = parseFloat(parts[1]); }
+            return (hours * 3600) + (minutes * 60) + seconds;
         }
 
         video.ontimeupdate = function() {
-            if (!activeSubtitles || activeSubtitles.length === 0) return;
-            var currentTime = video.currentTime;
-            var found = false;
+            if (!activeSubtitles.length) return;
+            var currentTime = video.currentTime; var found = false;
             for (var i = 0; i < activeSubtitles.length; i++) {
-                var sub = activeSubtitles[i];
-                if (currentTime >= sub.start && currentTime <= sub.end) {
-                    subTextElement.innerText = sub.text;
-                    subOverlay.style.display = "block";
-                    found = true;
-                    break;
+                if (currentTime >= activeSubtitles[i].start && currentTime <= activeSubtitles[i].end) {
+                    subTextElement.innerText = activeSubtitles[i].text; subOverlay.style.display = "block";
+                    found = true; break;
                 }
             }
             if (!found) subOverlay.style.display = "none";
@@ -506,100 +468,42 @@
         function resetHideTimer() {
             playerWrapper.classList.remove('hide-interface');
             if (hideTimeout) clearTimeout(hideTimeout);
-            if (video.paused) return;
-            hideTimeout = setTimeout(function() { playerWrapper.classList.add('hide-interface'); }, 3000);
+            if (!video.paused) hideTimeout = setTimeout(function() { playerWrapper.classList.add('hide-interface'); }, 3000);
         }
-
-        playerWrapper.onmousemove = resetHideTimer;
         playerWrapper.onclick = resetHideTimer;
-        playerWrapper.ontouchstart = resetHideTimer;
 
         function smoothSyncCheck() {
-            if (isSeeking || video.paused || video.seeking) return;
-            var percentage = (video.currentTime / video.duration) * 100;
-            if(!isNaN(percentage)) {
-                progressBar.style.width = percentage + "%";
-                timeDisplay.innerText = formatTime(video.currentTime) + " / " + formatTime(video.duration);
-            }
+            if (isSeeking || video.paused) return;
+            progressBar.style.width = ((video.currentTime / video.duration) * 100) + "%";
+            timeDisplay.innerText = formatTime(video.currentTime);
             if (!audio.src) return;
             var diff = video.currentTime - audio.currentTime;
-            if (Math.abs(diff) > 0.1 && Math.abs(diff) <= 0.5) {
-                if (diff > 0) { audio.playbackRate = 1.05; } else { audio.playbackRate = 0.95; }
-            } 
-            else if (Math.abs(diff) > 0.5) {
-                audio.playbackRate = 1.0; 
-                if (diff < 0) { 
-                    if (!audio.paused) {
-                        audio.pause();
-                        var watchVideo = setInterval(function() {
-                            if (video.currentTime >= audio.currentTime || video.paused) {
-                                audio.play().catch(function(){});
-                                clearInterval(watchVideo);
-                            }
-                        }, 50);
-                    }
-                } else { audio.currentTime = video.currentTime; }
-            } else {
-                audio.playbackRate = 1.0;
-                if (audio.paused && !video.paused) audio.play().catch(function(){});
-            }
+            if (Math.abs(diff) > 0.5) { audio.currentTime = video.currentTime; }
         }
 
         playPauseBtn.onclick = function() {
-            if (video.paused) {
-                video.muted = false; 
-                video.play().catch(function(){});
-                if(audio.src) audio.play().catch(function(){});
-                playPauseBtn.innerText = "⏸";
-                resetHideTimer();
-            } else {
-                video.pause();
-                if(audio.src) audio.pause();
-                playPauseBtn.innerText = "▶";
-                playerWrapper.classList.remove('hide-interface');
-                if (hideTimeout) clearTimeout(hideTimeout);
-            }
+            if (video.paused) { video.muted = false; video.play(); if(audio.src) audio.play(); playPauseBtn.innerText = "⏸"; } 
+            else { video.pause(); if(audio.src) audio.pause(); playPauseBtn.innerText = "▶"; }
         };
 
         progressContainer.onclick = function(e) {
-            isSeeking = true;
-            if(audio.src) audio.playbackRate = 1.0;
             var rect = progressContainer.getBoundingClientRect();
             var clickPercentage = (e.clientX - rect.left) / rect.width;
-            var newTime = clickPercentage * video.duration;
-            video.currentTime = newTime;
-            if(audio.src) audio.currentTime = newTime;
-            progressBar.style.width = (clickPercentage * 100) + "%";
-            setTimeout(function() { isSeeking = false; }, 400);
-            resetHideTimer();
+            video.currentTime = clickPercentage * video.duration;
+            if(audio.src) audio.currentTime = video.currentTime;
         };
 
         function formatTime(seconds) {
             if (isNaN(seconds)) return "00:00";
-            var mins = Math.floor(seconds / 60);
-            var secs = Math.floor(seconds % 60);
+            var mins = Math.floor(seconds / 60); var secs = Math.floor(seconds % 60);
             return (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
         }
 
         function exitPlayer() {
             if(syncInterval) clearInterval(syncInterval);
-            if (hideTimeout) clearTimeout(hideTimeout);
-            video.pause();
-            audio.pause();
-            subOverlay.style.display = "none";
-            if(audio.src) audio.playbackRate = 1.0;
-            playerWrapper.classList.remove('hide-interface');
-            playerWrapper.style.display = "none";
-            var de = document;
-            if (de.fullscreenElement || de.webkitFullscreenElement) {
-                if(de.exitFullscreen) de.exitFullscreen();
-                else if(de.webkitExitFullscreen) de.webkitExitFullscreen();
-            }
+            video.pause(); audio.pause(); playerWrapper.style.display = "none";
         }
         document.getElementById('close-btn').onclick = exitPlayer;
-
-        document.addEventListener('fullscreenchange', function() { if (!document.fullscreenElement && !document.webkitFullscreenElement) exitPlayer(); });
-        document.addEventListener('webkitfullscreenchange', function() { if (!document.fullscreenElement && !document.webkitFullscreenElement) exitPlayer(); });
     </script>
 </body>
 </html>
