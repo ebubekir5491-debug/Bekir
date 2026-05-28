@@ -67,11 +67,9 @@
             border-radius: 8px;
             font-size: 15px;
             outline: none;
-            transition: border-color 0.2s;
         }
         input:focus { border-color: #00adb5; }
         
-        /* Büyük Mobil Butonları */
         button {
             width: 100%;
             padding: 15px;
@@ -82,7 +80,6 @@
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            active-background: #008c92;
         }
         button:active { opacity: 0.9; transform: scale(0.98); }
         
@@ -94,7 +91,7 @@
             font-weight: normal;
         }
 
-        /* Liste Tasarımı */
+        /* Liste */
         ul { list-style: none; padding: 0; margin: 0; }
         li {
             padding: 15px;
@@ -114,7 +111,7 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding-right: 5px;
+            padding: 5px 0;
         }
         .delete-btn {
             background: #ff2e63;
@@ -122,11 +119,10 @@
             width: auto;
             padding: 8px 16px;
             font-size: 13px;
-            font-weight: normal;
             border-radius: 6px;
         }
 
-        /* Web Player Yapısı */
+        /* Web Oynatıcı Tam Ekran */
         #player-wrapper {
             display: none;
             position: fixed;
@@ -150,10 +146,9 @@
             padding: 6px 12px;
             border-radius: 6px;
             line-height: 1.4;
-            text-shadow: 1px 1px 2px rgba(0,0,0,1);
         }
 
-        /* Mobil Kontrol Paneli */
+        /* Kontroller */
         .controls {
             position: absolute;
             bottom: 0; left: 0; width: 100%;
@@ -171,7 +166,7 @@
             font-size: 22px; width: auto; padding: 5px;
         }
         .progress-container {
-            flex-grow: 1; height: 10px; background: #444; border-radius: 5px; position: relative;
+            flex-grow: 1; height: 10px; background: #444; border-radius: 5px;
         }
         .progress-bar { height: 100%; background: #00adb5; width: 0%; border-radius: 5px; }
         .time-display { font-size: 13px; min-width: 90px; text-align: center; color: #ccc; }
@@ -192,16 +187,13 @@
 
     <!-- Ana Sayfa İçeriği -->
     <div id="main-content">
-        <!-- Listeyi Yenile -->
         <button class="refresh-btn" id="refresh-btn">🔄 Listeyi Yenile</button>
 
-        <!-- Yayın Listesi -->
         <div class="section-card">
             <h3>Kayıtlı Yayınlar</h3>
             <ul id="stream-list">Yükleniyor...</ul>
         </div>
 
-        <!-- Kayıt Formu -->
         <div class="section-card">
             <h3>Yeni Yayın Ekle</h3>
             <div class="form-group">
@@ -266,7 +258,6 @@
         var hideTimeout = null;
         var activeSubtitles = [];      
 
-        // Günlük Tarih Şifresi (GGAAAA formatı)
         function generateDailyPassword() {
             var today = new Date();
             var dd = String(today.getDate()).padStart(2, '0');
@@ -275,7 +266,6 @@
             return dd + mm + yy;
         }
 
-        // Giriş Kontrolü
         document.getElementById('auth-submit-btn').onclick = function() {
             var userInput = document.getElementById('global-login-password').value.trim();
             if (userInput === generateDailyPassword()) {
@@ -319,16 +309,16 @@
                     titleSpan.setAttribute('data-audio', stream.audioUrl || '');
                     titleSpan.setAttribute('data-sub', stream.subtitleUrl || '');
                     
-                    // Yayına tıklandığında oynatma mantığı
                     titleSpan.onclick = function() {
                         var vUrl = this.getAttribute('data-video');
                         var aUrl = this.getAttribute('data-audio');
                         var sUrl = this.getAttribute('data-sub');
                         var id = this.getAttribute('data-id');
+                        var title = this.innerText;
                         
-                        // Android telefon tespiti yapıp harici oynatıcı tetikliyoruz
                         if (/Android/i.test(navigator.userAgent)) {
-                            openAndroidVideoPlayer(vUrl, this.innerText);
+                            // Android için tetikleme mekanizması
+                            openAndroidVideoPlayer(vUrl, title, id, aUrl, sUrl);
                         } else {
                             startPlayer(id, vUrl, aUrl, sUrl);
                         }
@@ -351,12 +341,36 @@
             }
         }
 
-        // Android MX Player / VLC / Sistem Oynatıcısını tetikleyen yapı (Doğrudan açılır)
-        function openAndroidVideoPlayer(videoUrl, title) {
+        // Android Güvenliğini Aşan ve Fallback İçeren Yeni Tetikleme Fonksiyonu
+        function openAndroidVideoPlayer(videoUrl, title, id, aUrl, sUrl) {
             var cleanUrl = videoUrl.replace(/^https?:\/\//, '');
             var protocol = videoUrl.startsWith('https') ? 'https' : 'http';
             var intentUri = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";type=video/*;title=" + encodeURIComponent(title) + ";end";
-            window.location.href = intentUri;
+            
+            // Gizli bir link simülasyonu yaratarak tarayıcı kısıtlamasını aşma
+            var fallbackTriggered = false;
+            var downloaderAnchor = document.createElement('a');
+            downloaderAnchor.href = intentUri;
+            downloaderAnchor.style.display = 'none';
+            document.body.appendChild(downloaderAnchor);
+            
+            // Uygulama açılmazsa 1.5 saniye sonra web player'ı devreye sokacak sayaç
+            var fallbackTimeout = setTimeout(function() {
+                fallbackTriggered = true;
+                console.log("Harici uygulama yanıt vermedi, Web Player açılıyor.");
+                startPlayer(id, videoUrl, aUrl, sUrl);
+            }, 1500);
+
+            // Sayfadan ayrılma (uygulamanın başarıyla açılması) durumunda sayacı iptal et
+            window.onblur = function() {
+                clearTimeout(fallbackTimeout);
+            };
+
+            downloaderAnchor.click(); // Sahte tıklama tetiklemesi
+            
+            setTimeout(function() {
+                document.body.removeChild(downloaderAnchor);
+            }, 100);
         }
 
         // Yeni Kayıt
@@ -395,20 +409,33 @@
 
         document.getElementById('refresh-btn').onclick = loadStreams;
 
-        // Tarayıcı içi oynatıcı fonksiyonları (Android harici cihazlar veya fallback durumları için aktif kalıyor)
+        // Web Player Motoru
         function startPlayer(streamKey, videoUrl, audioUrl, subtitleUrl) {
-            activeSubtitles = []; subOverlay.style.display = "none";
-            video.muted = true; video.src = videoUrl;
+            activeSubtitles = []; 
+            subOverlay.style.display = "none";
+            video.muted = true; 
+            video.src = videoUrl;
+            
             if (audioUrl) { audio.src = audioUrl; } else { audio.removeAttribute('src'); }
             if (subtitleUrl) { fetchRemoteSubtitle(subtitleUrl); }
 
             playerWrapper.style.display = "block";
-            video.load(); if(audio.src) audio.load();
+            
+            // Mobil cihazlarda tam ekran tetiklemesi
+            var requestFS = playerWrapper.requestFullscreen || playerWrapper.webkitRequestFullscreen || video.webkitEnterFullscreen;
+
+            video.load(); 
+            if(audio.src) audio.load();
 
             video.play().then(function() {
                 if(audio.src) audio.play().catch(function(){});
-                else setTimeout(function() { video.muted = false; }, 150);
+                else setTimeout(function() { video.muted = false; }, 200);
                 playPauseBtn.innerText = "⏸";
+                if(requestFS) requestFS.call(playerWrapper).catch(function(){});
+            }).catch(function(err) {
+                // Tarayıcı otomatik oynatmayı tamamen engellerse ses simgesini değiştir
+                video.muted = false;
+                playPauseBtn.innerText = "▶";
             });
 
             if(syncInterval) clearInterval(syncInterval);
@@ -502,6 +529,7 @@
         function exitPlayer() {
             if(syncInterval) clearInterval(syncInterval);
             video.pause(); audio.pause(); playerWrapper.style.display = "none";
+            window.onblur = null;
         }
         document.getElementById('close-btn').onclick = exitPlayer;
     </script>
