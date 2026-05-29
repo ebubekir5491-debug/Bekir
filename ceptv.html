@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kesin Çözüm Mobil TV</title>
+    <title>Kesin Çözüm TV</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -85,7 +85,7 @@
             border-radius: 10px;
         }
 
-        /* Liste Alanı */
+        /* Liste Düzeni */
         ul { list-style: none; padding: 0; margin: 0; }
         li {
             padding: 12px;
@@ -93,20 +93,15 @@
             margin-bottom: 12px;
             border-radius: 10px;
             display: flex;
-            flex-direction: column; /* Mobilde butonlar alt alta daha rahat bassın */
+            flex-direction: column;
             gap: 10px;
             border-left: 5px solid #00d2c4;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         .stream-info {
             font-size: 16px;
             font-weight: bold;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
             color: #fff;
-            padding: 4px 0;
         }
 
         .action-group {
@@ -115,29 +110,38 @@
             width: 100%;
         }
 
-        /* Gerçek ve Güvenli Oynatma Linkleri */
-        .play-anchor {
+        .btn-action {
             flex-grow: 1;
-            text-align: center;
-            text-decoration: none;
             padding: 12px;
             font-size: 14px;
             font-weight: bold;
             border-radius: 8px;
+            border: none;
             color: #fff;
-            display: block;
+            cursor: pointer;
+            text-align: center;
         }
         
-        .btn-system { background: #341f97; }
-        .btn-vlc { background: #ff9f43; color: #0f1115; }
+        .btn-play { background: #00d2c4; color: #0f1115; }
+        .btn-copy { background: #ff9f43; color: #0f1115; }
+        .btn-delete { background: #ff4757; width: auto; flex-grow: 0; padding: 0 15px; }
 
-        .delete-btn {
-            background: #ff4757;
-            color: white;
-            width: auto;
-            padding: 0 15px;
-            font-size: 13px;
-            border-radius: 8px;
+        /* Gelişmiş Entegre Oynatıcı */
+        #player-wrapper {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 9999;
+        }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .close-player-btn {
+            position: absolute;
+            top: 15px; right: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white; padding: 10px 20px;
+            border-radius: 20px; font-size: 14px; z-index: 10005;
             border: none;
         }
     </style>
@@ -159,7 +163,7 @@
 
         <div class="section-card">
             <h3>Kayıtlı Kanallar</h3>
-            <div class="subtitle-desc">Tarayıcı engelleri kaldırıldı. Doğrudan açmak istediğiniz oynatıcı butonuna dokunun:</div>
+            <div class="subtitle-desc">Tarayıcı engellerini aşmak için alternatif iki yöntem eklendi:</div>
             <ul id="stream-list">Yükleniyor...</ul>
         </div>
 
@@ -177,11 +181,18 @@
         </div>
     </div>
 
+    <div id="player-wrapper">
+        <button class="close-player-btn" id="close-btn">❌ Kapat</button>
+        <video id="my-video" controls playsinline crossorigin="anonymous"></video>
+    </div>
+
     <script>
         var baseDbUrl = "https://naberdeneme-ffa04-default-rtdb.firebaseio.com/";
         var folderName = "tv_oynatici_yayinlar"; 
         var restUrl = baseDbUrl + folderName + ".json";
         var streamList = document.getElementById('stream-list');
+        var video = document.getElementById('my-video');
+        var playerWrapper = document.getElementById('player-wrapper');
 
         function generateDailyPassword() {
             var today = new Date();
@@ -225,42 +236,54 @@
                     var stream = data[key];
                     var li = document.createElement('li');
                     
-                    // Kanal ismi
                     var infoDiv = document.createElement('div');
                     infoDiv.className = 'stream-info';
                     infoDiv.innerText = stream.name;
                     li.appendChild(infoDiv);
 
-                    // Buton grubu oluşturma
                     var actionGroup = document.createElement('div');
                     actionGroup.className = 'action-group';
 
-                    var cleanUrl = stream.videoUrl.replace(/^https?:\/\//, '');
-                    var protocol = stream.videoUrl.startsWith('https') ? 'https' : 'http';
+                    // Yöntem 1: Doğrudan Ekran İçi Oynat Butonu
+                    var playBtn = document.createElement('button');
+                    playBtn.className = "btn-action btn-play";
+                    playBtn.innerText = "▶ Tarayıcıda Aç";
+                    playBtn.setAttribute('data-video', stream.videoUrl);
+                    playBtn.onclick = function() {
+                        var url = this.getAttribute('data-video');
+                        playerWrapper.style.display = "block";
+                        video.src = url;
+                        video.load();
+                        video.play().catch(function(e){});
+                    };
+                    actionGroup.appendChild(playBtn);
 
-                    // 1. Buton: Normal Sistem Oynatıcısı (MX, Samsung Video, VLC vb.)
-                    var systemIntent = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";type=video/*;title=" + encodeURIComponent(stream.name) + ";end";
-                    var sysAnchor = document.createElement('a');
-                    sysAnchor.className = "play-anchor btn-system";
-                    sysAnchor.href = systemIntent;
-                    sysAnchor.innerText = "▶ Oynat";
-                    actionGroup.appendChild(sysAnchor);
+                    // Yöntem 2: Sunucu/Tarayıcı Engeline Karşı "Kopyala ve VLC'ye Yapıştır" Butonu
+                    var copyBtn = document.createElement('button');
+                    copyBtn.className = "btn-action btn-copy";
+                    copyBtn.innerText = "📋 Linki Kopyala";
+                    copyBtn.setAttribute('data-video', stream.videoUrl);
+                    copyBtn.onclick = function() {
+                        var url = this.getAttribute('data-video');
+                        
+                        // Mobil cihazlar için en kararlı kopyalama mekanizması
+                        var el = document.createElement('textarea');
+                        el.value = url;
+                        document.body.appendChild(el);
+                        el.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(el);
+                        
+                        alert("Yayın linki kopyalandı! Telefonda VLC Player'ı açıp 'Ağ Akışı' kısmına yapıştırarak kesintisiz izleyebilirsiniz.");
+                    };
+                    actionGroup.appendChild(copyBtn);
 
-                    // 2. Buton: Doğrudan VLC Player'ı hedef alan Özel Güvenli Köprü
-                    // Telefondaki VLC uygulamasını doğrudan uyandırır ve CORS engelini tamamen sıfırlar
-                    var vlcIntent = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";package=org.videolan.vlc;type=video/*;title=" + encodeURIComponent(stream.name) + ";end";
-                    var vlcAnchor = document.createElement('a');
-                    vlcAnchor.className = "play-anchor btn-vlc";
-                    vlcAnchor.href = vlcIntent;
-                    vlcAnchor.innerText = "🍊 VLC ile Aç";
-                    actionGroup.appendChild(vlcAnchor);
-
-                    // 3. Buton: Sil Butonu
+                    // Silme Butonu
                     var delBtn = document.createElement('button');
-                    delBtn.className = 'delete-btn';
+                    delBtn.className = 'btn-action btn-delete';
                     delBtn.innerText = "Sil";
                     delBtn.setAttribute('data-id', key);
-                    delBtn.onclick = function(e) {
+                    delBtn.onclick = function() {
                         if(confirm("Silinsin mi?")) deleteStream(this.getAttribute('data-id'));
                     };
                     actionGroup.appendChild(delBtn);
@@ -276,7 +299,7 @@
             var name = document.getElementById('stream-name').value.trim();
             var videoUrl = document.getElementById('video-link').value.trim();
 
-            if(!name || !videoUrl) { alert("Lütfen tüm alanları doldurun!"); return; }
+            if(!name || !videoUrl) { alert("Lütfen alanları doldurun!"); return; }
             
             var xhr = new XMLHttpRequest();
             xhr.open("POST", restUrl, true);
@@ -302,6 +325,12 @@
         }
 
         document.getElementById('refresh-btn').onclick = loadStreams;
+
+        document.getElementById('close-btn').onclick = function() {
+            video.pause();
+            video.src = "";
+            playerWrapper.style.display = "none";
+        };
     </script>
 </body>
 </html>
