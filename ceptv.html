@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bypass Mobil TV Oynatıcı</title>
+    <title>Kesin Çözüm Mobil TV</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -47,7 +47,7 @@
             border: 1px solid #2a2f3a;
         }
         
-        h3 { margin-top: 0; margin-bottom: 8px; color: #ff9f43; font-size: 18px; font-weight: 600; }
+        h3 { margin-top: 0; margin-bottom: 8px; color: #00d2c4; font-size: 18px; font-weight: 600; }
         .subtitle-desc { color: #8a99ad; font-size: 13px; margin-bottom: 15px; }
         
         .form-group { margin-bottom: 12px; }
@@ -63,12 +63,11 @@
             font-size: 15px;
             outline: none;
         }
-        input:focus { border-color: #ff9f43; }
         
         button {
             width: 100%;
             padding: 15px;
-            background: #ff9f43;
+            background: #00d2c4;
             border: none;
             color: #0f1115;
             font-size: 16px;
@@ -89,31 +88,54 @@
         /* Liste Alanı */
         ul { list-style: none; padding: 0; margin: 0; }
         li {
-            padding: 15px;
+            padding: 12px;
             background: #212631;
             margin-bottom: 12px;
             border-radius: 10px;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-left: 5px solid #ff9f43;
+            flex-direction: column; /* Mobilde butonlar alt alta daha rahat bassın */
+            gap: 10px;
+            border-left: 5px solid #00d2c4;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .stream-title-area {
-            flex-grow: 1;
+        
+        .stream-info {
             font-size: 16px;
             font-weight: bold;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding-right: 10px;
             color: #fff;
+            padding: 4px 0;
         }
+
+        .action-group {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        /* Gerçek ve Güvenli Oynatma Linkleri */
+        .play-anchor {
+            flex-grow: 1;
+            text-align: center;
+            text-decoration: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            color: #fff;
+            display: block;
+        }
+        
+        .btn-system { background: #341f97; }
+        .btn-vlc { background: #ff9f43; color: #0f1115; }
+
         .delete-btn {
             background: #ff4757;
             color: white;
             width: auto;
-            padding: 8px 14px;
+            padding: 0 15px;
             font-size: 13px;
             border-radius: 8px;
             border: none;
@@ -137,7 +159,7 @@
 
         <div class="section-card">
             <h3>Kayıtlı Kanallar</h3>
-            <div class="subtitle-desc">Kanala dokunduğunuzda sunucu güvenliğini aşmak için telefonunuzun kendi oynatıcısı (VLC / MX Player vb.) otomatik açılır.</div>
+            <div class="subtitle-desc">Tarayıcı engelleri kaldırıldı. Doğrudan açmak istediğiniz oynatıcı butonuna dokunun:</div>
             <ul id="stream-list">Yükleniyor...</ul>
         </div>
 
@@ -151,7 +173,7 @@
                 <label>Video / Stream Linki:</label>
                 <input type="url" id="video-link" placeholder="m3u8, mp4, mkv, ts vb...">
             </div>
-            <button id="save-btn" style="background: #ff9f43; margin-top: 5px;">Sisteme Kaydet</button>
+            <button id="save-btn" style="margin-top: 5px;">Sisteme Kaydet</button>
         </div>
     </div>
 
@@ -203,53 +225,50 @@
                     var stream = data[key];
                     var li = document.createElement('li');
                     
-                    var titleSpan = document.createElement('span');
-                    titleSpan.className = 'stream-title-area';
-                    titleSpan.innerText = "▶ " + stream.name;
-                    titleSpan.setAttribute('data-video', stream.videoUrl);
-                    
-                    // Kanala dokunulduğu an sunucu engelini aşan Intent yapısı tetiklenir
-                    titleSpan.onclick = function() {
-                        var vUrl = this.getAttribute('data-video');
-                        var title = this.innerText.replace("▶ ", "");
-                        bypassServerSecurityAndPlay(vUrl, title);
-                    };
-                    
-                    li.appendChild(titleSpan);
+                    // Kanal ismi
+                    var infoDiv = document.createElement('div');
+                    infoDiv.className = 'stream-info';
+                    infoDiv.innerText = stream.name;
+                    li.appendChild(infoDiv);
 
+                    // Buton grubu oluşturma
+                    var actionGroup = document.createElement('div');
+                    actionGroup.className = 'action-group';
+
+                    var cleanUrl = stream.videoUrl.replace(/^https?:\/\//, '');
+                    var protocol = stream.videoUrl.startsWith('https') ? 'https' : 'http';
+
+                    // 1. Buton: Normal Sistem Oynatıcısı (MX, Samsung Video, VLC vb.)
+                    var systemIntent = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";type=video/*;title=" + encodeURIComponent(stream.name) + ";end";
+                    var sysAnchor = document.createElement('a');
+                    sysAnchor.className = "play-anchor btn-system";
+                    sysAnchor.href = systemIntent;
+                    sysAnchor.innerText = "▶ Oynat";
+                    actionGroup.appendChild(sysAnchor);
+
+                    // 2. Buton: Doğrudan VLC Player'ı hedef alan Özel Güvenli Köprü
+                    // Telefondaki VLC uygulamasını doğrudan uyandırır ve CORS engelini tamamen sıfırlar
+                    var vlcIntent = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";package=org.videolan.vlc;type=video/*;title=" + encodeURIComponent(stream.name) + ";end";
+                    var vlcAnchor = document.createElement('a');
+                    vlcAnchor.className = "play-anchor btn-vlc";
+                    vlcAnchor.href = vlcIntent;
+                    vlcAnchor.innerText = "🍊 VLC ile Aç";
+                    actionGroup.appendChild(vlcAnchor);
+
+                    // 3. Buton: Sil Butonu
                     var delBtn = document.createElement('button');
                     delBtn.className = 'delete-btn';
                     delBtn.innerText = "Sil";
                     delBtn.setAttribute('data-id', key);
                     delBtn.onclick = function(e) {
-                        if (e.stopPropagation) e.stopPropagation();
                         if(confirm("Silinsin mi?")) deleteStream(this.getAttribute('data-id'));
                     };
-                    
-                    li.appendChild(delBtn);
+                    actionGroup.appendChild(delBtn);
+
+                    li.appendChild(actionGroup);
                     streamList.appendChild(li);
                 }
             }
-        }
-
-        // Sunucu Korumalarını (CORS, User-Agent vb.) Tarayıcıyı Devre Dışı Bırakarak Aşan Fonksiyon
-        function bypassServerSecurityAndPlay(videoUrl, title) {
-            var cleanUrl = videoUrl.replace(/^https?:\/\//, '');
-            var protocol = videoUrl.startsWith('https') ? 'https' : 'http';
-            
-            // Android sistem derinliğine gönderilen doğrudan oynatma emri (Intent)
-            var intentUri = "intent://" + cleanUrl + "#Intent;scheme=" + protocol + ";type=video/*;title=" + encodeURIComponent(title) + ";end";
-            
-            // Kullanıcı etkileşim kuralını çiğnememek için dinamik DOM elementi ile fırlatıyoruz
-            var anchor = document.createElement('a');
-            anchor.href = intentUri;
-            anchor.style.display = 'none';
-            document.body.appendChild(anchor);
-            anchor.click();
-            
-            setTimeout(function() {
-                document.body.removeChild(anchor);
-            }, 100);
         }
 
         // Yeni Kayıt
