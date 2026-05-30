@@ -3,62 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SolidWorks Tarzı Gelişmiş Montaj Simülasyonu</title>
+    <title>3D Profesyonel Mobilya Tasarım & Montaj</title>
     <style>
         body {
             margin: 0; padding: 0; overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e1e24; color: #fff;
+            background-color: #1a1a1a; color: #e0e0e0;
+            user-select: none;
         }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; }
         
-        /* Arayüz Elemanları */
+        /* Sol Alt Ana Kontrol Paneli */
         .controls-panel {
-            position: fixed; bottom: 20px; left: 20px; z-index: 10;
-            display: flex; gap: 10px; background: rgba(30, 30, 30, 0.85);
-            padding: 10px; border-radius: 10px; border: 1px solid #444;
+            position: fixed; bottom: 25px; left: 25px; z-index: 10;
+            display: flex; gap: 12px; background: rgba(26, 26, 26, 0.9);
+            padding: 12px; border-radius: 8px; border: 1px solid #333;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         }
-        .bg-panel {
-            position: fixed; bottom: 20px; right: 20px; z-index: 10;
-            background: rgba(30, 30, 30, 0.85); padding: 10px; border-radius: 10px; border: 1px solid #444;
+        
+        /* Dinamik Montaj İlişkisi Paneli (SolidWorks Tarzı - Sol Üst) */
+        #mate-popup-panel {
+            display: none; position: fixed; top: 25px; left: 25px; z-index: 15;
+            background: rgba(30, 30, 35, 0.95); width: 260px; padding: 15px;
+            border-radius: 8px; border: 2px solid #007acc; box-shadow: 0 10px 25px rgba(0,0,0,0.6);
         }
+        #mate-popup-panel h4 { margin: 0 0 12px 0; color: #007acc; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        
         .btn {
-            background: #3a3f58; color: white; border: none; padding: 12px 18px;
-            border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;
+            background: #2d3142; color: white; border: none; padding: 10px 16px;
+            border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;
         }
-        .btn:hover { background: #4a5172; }
-        .btn-assembly { background: #007acc; }
-        .btn-assembly:hover { background: #0098ff; }
-        .btn-assembly.active { background: #d32f2f; animation: pulse 1.5s infinite; }
+        .btn:hover { background: #bfc0c0; color: #2d3142; }
+        .btn-primary { background: #007acc; }
+        .btn-primary:hover { background: #0098ff; color: white; }
+        .btn-primary.active { background: #d32f2f; }
+        
+        .mate-option-btn {
+            width: 100%; text-align: left; background: #252526; margin-bottom: 6px;
+            padding: 10px; border: 1px solid #3c3c3c; border-radius: 4px; color: #fff; cursor: pointer;
+        }
+        .mate-option-btn:hover { background: #007acc; }
 
-        /* SolidWorks Tarzı Bilgi Kutusu */
+        /* Durum Çubuğu */
         #status-banner {
-            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 122, 204, 0.9); color: white; padding: 12px 25px;
-            border-radius: 6px; font-size: 15px; font-weight: bold; z-index: 10;
-            display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #0098ff;
+            position: fixed; top: 25px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 122, 204, 0.95); color: white; padding: 10px 25px;
+            border-radius: 4px; font-size: 14px; font-weight: bold; z-index: 10;
+            display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
 
-        /* Modal */
+        /* Modal (Yeni Panel Ekleme) */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #25252d; padding: 25px; border-radius: 10px; z-index: 20;
-            width: 280px; border: 1px solid #444; box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            background: #252526; padding: 25px; border-radius: 8px; z-index: 20;
+            width: 290px; border: 1px solid #3c3c3c; box-shadow: 0 15px 40px rgba(0,0,0,0.8);
         }
-        .modal h3 { margin-top: 0; color: #007acc; font-size: 18px; }
+        .modal h3 { margin-top: 0; color: #007acc; font-size: 16px; }
         .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; margin-bottom: 5px; font-size: 13px; color: #bbb; }
-        .form-group input { width: 100%; padding: 8px; background: #1a1a20; border: 1px solid #444; color: white; border-radius: 4px; box-sizing: border-box; }
+        .form-group label { display: block; margin-bottom: 4px; font-size: 12px; color: #aaa; }
+        .form-group input, .form-group select { 
+            width: 100%; padding: 8px; background: #1e1e1e; border: 1px solid #3c3c3c; 
+            color: white; border-radius: 4px; box-sizing: border-box; 
+        }
         .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
         .btn-success { background: #2e7d32; }
         .btn-danger { background: #c62828; }
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 15; }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
-        }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 15; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -66,70 +76,101 @@
 <body>
 
     <div id="canvas-container"></div>
-    <div id="status-banner">SolidWorks Montaj İlişkisi Aktif</div>
+    <div id="status-banner">Montaj Modu</div>
     <div class="overlay" id="overlay"></div>
 
     <div class="controls-panel">
-        <button class="btn" onclick="openModal()">📦 Yeni Parça (mm)</button>
-        <button class="btn btn-assembly" id="assembly-btn" onclick="toggleAssemblyMode()">🔧 İlişki Ekle (Mate)</button>
+        <button class="btn btn-primary" onclick="openModal()">➕ Yeni Sunta/Panel Ekle</button>
+        <button class="btn" id="assembly-btn" style="background:#8e44ad;" onclick="toggleMateMode()">🔧 İlişki Ekle (Mate)</button>
     </div>
 
-    <div class="bg-panel">
-        <label style="font-size: 12px; color: #aaa; display:block; margin-bottom:5px;">Arka Plan:</label>
-        <input type="color" id="bg-picker" value="#1e1e24" style="border:none; cursor:pointer; background:none;">
+    <div id="mate-popup-panel">
+        <h4>Montaj İlişkisi Seçin</h4>
+        <button class="mate-option-btn" onclick="applyMateType('coincident')">📐 Çakışık (Yüz Yüze)</button>
+        <button class="mate-option-btn" onclick="applyMateType('parallel')">⛓️ Paralel Yap / Hizala</button>
+        <button class="mate-option-btn" onclick="applyMateType('distance')">📏 Mesafeli Montaj (mm)</button>
+        <hr style="border:0; border-top:1px solid #3c3c3c; margin:10px 0;">
+        <button class="btn btn-danger" style="width:100%" onclick="resetMateSystem()">İptal Et</button>
     </div>
 
     <div class="modal" id="part-modal">
-        <h3>Parça Boyutları (mm)</h3>
-        <div class="form-group"><label>Genişlik (X):</label><input type="number" id="dx" value="200"></div>
-        <div class="form-group"><label>Yükseklik (Y):</label><input type="number" id="dy" value="100"></div>
-        <div class="form-group"><label>Kalınlık (Z):</label><input type="number" id="dz" value="40"></div>
-        <div class="form-group"><label>Renk:</label><input type="color" id="p-color" value="#4a90e2"></div>
+        <h3>Yeni Ahşap Panel Ölçüleri (mm)</h3>
+        <div class="form-group"><label>Genişlik (X Eksen - Genişlik):</label><input type="number" id="dx" value="600"></div>
+        <div class="form-group"><label>Yükseklik (Y Eksen - Boy):</label><input type="number" id="dy" value="720"></div>
+        <div class="form-group"><label>Kalınlık (Z Eksen - Standart Sunta):</label><input type="number" id="dz" value="18"></div>
+        <div class="form-group">
+            <label>Malzeme / Yüzey Tipi:</label>
+            <select id="p-material">
+                <option value="#d7ccc8">Mat Beyaz / MDF</option>
+                <option value="#a1887f">Antrasit Meşe</option>
+                <option value="#5d4037">Ceviz (Ahşap Dokulu)</option>
+                <option value="#b0bec5">Lake Gri</option>
+            </select>
+        </div>
         <div class="modal-buttons">
-            <button class="btn btn-danger" onclick="closeModal()">İptal</button>
-            <button class="btn btn-success" onclick="buildSolidPart()">Sahnede Oluştur</button>
+            <button class="btn btn-danger" onclick="closeModal()">Vazgeç</button>
+            <button class="btn btn-success" onclick="buildFurniturePart()">Sahnede Üret</button>
         </div>
     </div>
 
     <script>
         let scene, camera, renderer, controls;
-        let selectableFaces = []; // Sadece tekil yüzeyleri tutan dizi
-        let assemblyGroups = [];  // Taşınırken tüm parçanın beraber hareket etmesi için gruplar
-        
+        let selectableFaces = []; 
+        let furnitureGroups = [];  
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
         
-        // Sürükleme (Drag)
+        // Sürükleme Kontrolleri
         let isDragging = false, selectedGroup = null, dragPlane = new THREE.Plane(), dragIntersection = new THREE.Vector3();
         
-        // Montaj (Mate) Verileri
+        // Montaj İlişkisi Hafızası
         let mateMode = false;
         let hoveredFace = null;
-        let selectedMateFaces = []; // [{ faceMesh, parentGroup, normal, point }]
+        let selectedMateFaces = []; 
 
         function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x1e1e24);
+            scene.background = new THREE.Color(0x1a1a1a);
 
+            // Kamera Görüşü
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
-            camera.position.set(400, 400, 600);
+            camera.position.set(1000, 1000, 1500);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            // Gerçekçi Render Ayarları
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
             renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Yumuşak mobilya gölgeleri
+            renderer.toneMapping = THREE.ACESFilmicToneMapping; // Sinematik/Gerçekçi renk tonlaması
+            renderer.toneMappingExposure = 1.0;
             container.appendChild(renderer.domElement);
 
-            // Işıklar
-            scene.add(new THREE.AmbientLight(0x777777));
-            let dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            dirLight.position.set(300, 800, 500);
+            // --- FOTOGERÇEKÇİ STÜDYO IŞIKLANDIRMASI ---
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6); // Tavandan ve zeminden yumuşak ışık yayılımı
+            hemiLight.position.set(0, 2000, 0);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfff8e7, 0.8); // Güneş/Stüdyo spot ışığı efekti
+            dirLight.position.set(600, 1500, 800);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.top = 1000;
+            dirLight.shadow.camera.bottom = -1000;
+            dirLight.shadow.camera.left = -1000;
+            dirLight.shadow.camera.right = 1000;
+            dirLight.shadow.camera.near = 0.1;
+            dirLight.shadow.camera.far = 4000;
+            dirLight.shadow.mapSize.width = 2048; // Yüksek çözünürlüklü gölge haritası
+            dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            // Grid
-            scene.add(new THREE.GridHelper(2000, 40, 0x444444, 0x333333));
+            // Atölye Izgarası (Zemin Kontrolü)
+            const grid = new THREE.GridHelper(3000, 60, 0x333333, 0x222222);
+            grid.position.y = -0.5;
+            scene.add(grid);
 
-            // Kamera Kontrolleri (Sağ Tık: Döndür, Sol Tık: Sürükleme/Seçim, Zoom: Çift Parmak/Tekerlek)
+            // Kamera Ayarları (Sağ Tık = Çevir, Sol Tık = Sürükle, İki parmak/Tekerlek = Zoom)
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
@@ -140,85 +181,87 @@
             renderer.domElement.addEventListener('mousedown', onMouseDown);
             renderer.domElement.addEventListener('mousemove', onMouseMove);
             renderer.domElement.addEventListener('mouseup', onMouseUp);
-            
-            // Mobil dokunmatik desteği
-            renderer.domElement.addEventListener('touchstart', (e) => onMouseDown(e.touches[0]), {passive:false});
-            renderer.domElement.addEventListener('touchmove', (e) => onMouseMove(e.touches[0]), {passive:false});
-            renderer.domElement.addEventListener('touchend', onMouseUp);
 
             animate();
         }
 
-        // --- SOLIDWORKS TARZI TEKİL YÜZEYLİ PARÇA ÜRETİMİ ---
-        function buildSolidPart() {
+        // --- MOBİLYA PANELİ ÜRETİM MOTORU (GERÇEKÇİ PBR MATERYAL) ---
+        function buildFurniturePart() {
             const dx = parseFloat(document.getElementById('dx').value);
             const dy = parseFloat(document.getElementById('dy').value);
             const dz = parseFloat(document.getElementById('dz').value);
-            const colorHex = document.getElementById('p-color').value;
+            const matColor = document.getElementById('p-material').value;
 
-            // Ana montaj grubu (SolidWorks "Component" mantığı)
             const partGroup = new THREE.Group();
 
-            // Dikdörtgen prizmanın 6 yüzeyi için boyut ve yön tanımları
+            // 6 Yüzey Tanımı (Dolap dikmesi, raf, kapak için pürüzsüz düzlemler)
             const facesDef = [
-                { size: [dz, dy], pos: [dx/2, 0, 0], rot: [0, Math.PI/2, 0], name: "Sag_Yuzey" },
-                { size: [dz, dy], pos: [-dx/2, 0, 0], rot: [0, -Math.PI/2, 0], name: "Sol_Yuzey" },
-                { size: [dx, dz], pos: [0, dy/2, 0], rot: [-Math.PI/2, 0, 0], name: "Ust_Yuzey" },
-                { size: [dx, dz], pos: [0, -dy/2, 0], rot: [Math.PI/2, 0, 0], name: "Alt_Yuzey" },
-                { size: [dx, dy], pos: [0, 0, dz/2], rot: [0, 0, 0], name: "On_Yuzey" },
-                { size: [dx, dy], pos: [0, 0, -dz/2], rot: [0, Math.PI, 0], name: "Arka_Yuzey" }
+                { size: [dz, dy], pos: [dx/2, 0, 0], rot: [0, Math.PI/2, 0] },
+                { size: [dz, dy], pos: [-dx/2, 0, 0], rot: [0, -Math.PI/2, 0] },
+                { size: [dx, dz], pos: [0, dy/2, 0], rot: [-Math.PI/2, 0, 0] },
+                { size: [dx, dz], pos: [0, -dy/2, 0], rot: [Math.PI/2, 0, 0] },
+                { size: [dx, dy], pos: [0, 0, dz/2], rot: [0, 0, 0] },
+                { size: [dx, dy], pos: [0, 0, -dz/2], rot: [0, Math.PI, 0] }
             ];
 
             facesDef.forEach(f => {
                 const faceGeo = new THREE.PlaneGeometry(f.size[0], f.size[1]);
-                const faceMat = new THREE.MeshStandardMaterial({
-                    color: new THREE.Color(colorHex),
-                    roughness: 0.3, metalness: 0.2, side: THREE.DoubleSide
-                });
-                const faceMesh = new THREE.Mesh(faceGeo, faceMat);
                 
-                // Konum ve rotasyon ayarı
+                // Fotogerçekçilik sağlayan PBR Materyal Ayarları (Metalness ve Roughness çok önemli)
+                const faceMat = new THREE.MeshStandardMaterial({
+                    color: new THREE.Color(matColor),
+                    roughness: 0.45,  // Işığın ahşap yüzeyde pürüzsüz dağılması için
+                    metalness: 0.05,  // Metalik yansımayı azaltır (Ahşap/MDF hissi verir)
+                    side: THREE.DoubleSide
+                });
+
+                const faceMesh = new THREE.Mesh(faceGeo, faceMat);
                 faceMesh.position.set(f.pos[0], f.pos[1], f.pos[2]);
                 faceMesh.rotation.set(f.rot[0], f.rot[1], f.rot[2]);
-                
-                // SolidWorks verilerini mesh içine saklıyoruz
-                faceMesh.userData = { parentGroup: partGroup, originalColor: colorHex, isFace: true, localNormal: new THREE.Vector3(0,0,1).applyQuaternion(faceMesh.quaternion) };
+                faceMesh.castShadow = true;
+                faceMesh.receiveShadow = true;
+
+                faceMesh.userData = { 
+                    parentGroup: partGroup, 
+                    originalColor: matColor, 
+                    isFace: true 
+                };
 
                 partGroup.add(faceMesh);
-                selectableFaces.push(faceMesh); // Sadece yüzeyler seçilebilir olacak
+                selectableFaces.push(faceMesh);
             });
 
-            // Rastgele konumlandır
-            partGroup.position.set((Math.random()-0.5)*200, dy/2 + 10, (Math.random()-0.5)*200);
+            // Parçayı sahnenin ortasında hafif yukarıda başlat
+            partGroup.position.set((Math.random()-0.5)*300, dy/2 + 20, (Math.random()-0.5)*300);
             scene.add(partGroup);
-            assemblyGroups.push(partGroup);
+            furnitureGroups.push(partGroup);
 
             closeModal();
         }
 
-        // --- FARE VE ETKİLEŞİM YÖNETİMİ ---
-        function updateMouse(e) {
+        // --- INTERACTION & SEÇİM ETKİLEŞİMLERİ ---
+        function getMousePos(e) {
             const rect = renderer.domElement.getBoundingClientRect();
             mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
             mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         }
 
         function onMouseDown(e) {
-            updateMouse(e);
+            getMousePos(e);
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(selectableFaces);
 
             if (mateMode) {
-                // MONTAJ SEÇİMİ (Sadece tıklanan Düzlem/Yüzey alınır)
+                // MONTAJ SEÇİM SÜRECİ
                 if (intersects.length > 0) {
                     const hitFace = intersects[0].object;
                     
                     if (selectedMateFaces.length === 1 && selectedMateFaces[0].parentGroup === hitFace.userData.parentGroup) {
-                        alert("Lütfen montaj için iki farklı parça seçin!");
+                        alert("Lütfen montaj için iki farklı dolap paneli seçin!");
                         return;
                     }
 
-                    // Dünya koordinatlarında Yüzey Normali (Yönü) hesaplama
+                    // Yüzeyin dünya yön vektörünü hesaplama
                     const worldNormal = new THREE.Vector3(0, 0, 1)
                         .applyQuaternion(hitFace.quaternion)
                         .applyQuaternion(hitFace.userData.parentGroup.quaternion)
@@ -231,17 +274,18 @@
                         point: intersects[0].point
                     });
 
-                    // Seçim görsel efekti (SolidWorks yeşili/mor rengi)
-                    hitFace.material.color.setHex(0x00ff00);
+                    hitFace.material.color.setHex(0x007acc); // Seçilen yüzeyi mavi yap
 
                     if (selectedMateFaces.length === 1) {
-                        document.getElementById('status-banner').innerText = "2. Parçanın birleştirilecek DÜZLEMİNİ seçin.";
+                        document.getElementById('status-banner').innerText = "2. Yüzeyi (Hedef birleşme düzlemini) seçin.";
                     } else if (selectedMateFaces.length === 2) {
-                        executeSolidMate();
+                        // 2 yüzey seçildiğinde SolidWorks'teki gibi işlem paneli açılır
+                        document.getElementById('mate-popup-panel').style.display = 'block';
+                        document.getElementById('status-banner').style.display = 'none';
                     }
                 }
-            } else if (e.button === 0 || e.touches) { 
-                // SOL TIK: PARÇA SÜRÜKLEME (Tüm bileşen grup olarak taşınır)
+            } else if (e.button === 0) { 
+                // SOL TIK: PARÇA TAŞIMA (Tüm dolap bloğu beraber taşınır)
                 if (intersects.length > 0) {
                     controls.enabled = false;
                     selectedGroup = intersects[0].object.userData.parentGroup;
@@ -252,10 +296,9 @@
         }
 
         function onMouseMove(e) {
-            updateMouse(e);
+            getMousePos(e);
             raycaster.setFromCamera(mouse, camera);
 
-            // Sürükleme İşlemi
             if (isDragging && selectedGroup) {
                 if (raycaster.ray.intersectPlane(dragPlane, dragIntersection)) {
                     selectedGroup.position.x = dragIntersection.x;
@@ -264,19 +307,19 @@
                 return;
             }
 
-            // SOLIDWORKS TARZI YÜZEYE GELİNCE PARLAMA (HOVER) EFEKTİ
+            // GÖRSEL VURGU (HOVER) EFEKTİ
             const intersects = raycaster.intersectObjects(selectableFaces);
             if (intersects.length > 0) {
                 const currentFace = intersects[0].object;
-                if (hoveredFace && hoveredFace !== currentFace && !isFaceSelected(hoveredFace)) {
+                if (hoveredFace && hoveredFace !== currentFace && !checkSelected(hoveredFace)) {
                     hoveredFace.material.color.set(hoveredFace.userData.originalColor);
                 }
                 hoveredFace = currentFace;
-                if (!isFaceSelected(hoveredFace)) {
-                    hoveredFace.material.color.setHex(0xffaa00); // Turuncu vurgu rengi
+                if (!checkSelected(hoveredFace)) {
+                    hoveredFace.material.color.setHex(0xffaa00); // Üzerine gelince turuncu parlama
                 }
             } else {
-                if (hoveredFace && !isFaceSelected(hoveredFace)) {
+                if (hoveredFace && !checkSelected(hoveredFace)) {
                     hoveredFace.material.color.set(hoveredFace.userData.originalColor);
                     hoveredFace = null;
                 }
@@ -286,80 +329,76 @@
         function onMouseUp() {
             isDragging = false;
             selectedGroup = null;
-            if (!mateMode) controls.enabled = true; // Kamera serbest bırak
+            if (!mateMode) controls.enabled = true;
         }
 
-        function isFaceSelected(face) {
+        function checkSelected(face) {
             return selectedMateFaces.some(f => f.faceMesh === face);
         }
 
-        // --- MONTAJ MODU KONTROLÜ ---
-        function toggleAssemblyMode() {
+        // --- MONTAJ MOTORU SEÇENEKLERİ (PARALEL, HİZALA, MESAFE) ---
+        function toggleMateMode() {
             mateMode = !mateMode;
             const btn = document.getElementById('assembly-btn');
             const banner = document.getElementById('status-banner');
             
             if (mateMode) {
                 selectedMateFaces = [];
-                btn.classList.add('active');
-                btn.innerText = "❌ İptal Et";
-                banner.innerText = "1. Parçanın birleştirilecek DÜZLEMİNİ seçin.";
+                btn.style.background = '#d32f2f';
+                btn.innerText = "❌ İptal";
+                banner.innerText = "1. Yüzeyi (Referans düzlemini) seçin.";
                 banner.style.display = 'block';
             } else {
                 resetMateSystem();
             }
         }
 
+        function applyMateType(type) {
+            let offset = 0;
+            if (type === 'distance') {
+                const val = prompt("Lütfen paralel montaj mesafesini girin (mm):", "50");
+                offset = parseFloat(val) || 0;
+            }
+
+            const f1 = selectedMateFaces[0]; // Sabit duran panel yüzeyi
+            const f2 = selectedMateFaces[1]; // Hareket edecek panel yüzeyi
+
+            // 1. ROTASYON HİZALAMA (Paralel ve Hizala mantığı)
+            const targetNormal = f1.normal.clone().negate();
+            const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(f2.normal, targetNormal);
+            
+            f2.parentGroup.quaternion.premultiply(rotationQuaternion);
+            f2.parentGroup.updateMatrixWorld();
+
+            // Eğer sadece 'parallel' veya 'hizala' seçildiyse konum değiştirmeden sadece açı eşitlenir.
+            if (type === 'coincident' || type === 'distance') {
+                // 2. POZİSYON HİZALAMA (Çakışık ve Mesafeli)
+                const targetWorldPoint = f1.point.clone().add(f1.normal.clone().multiplyScalar(offset));
+                const f2CenterToTouchPoint = f2.point.clone().sub(f2.parentGroup.position);
+                f2CenterToTouchPoint.applyQuaternion(rotationQuaternion);
+
+                f2.parentGroup.position.copy(targetWorldPoint.sub(f2CenterToTouchPoint));
+                f2.parentGroup.updateMatrixWorld();
+            }
+
+            alert("Montaj ilişkisi uygulandı!");
+            resetMateSystem();
+        }
+
         function resetMateSystem() {
             mateMode = false;
             selectableFaces.forEach(f => f.material.color.set(f.userData.originalColor));
             selectedMateFaces = [];
-            const btn = document.getElementById('assembly-btn');
-            btn.classList.remove('active');
-            btn.innerText = "🔧 İlişki Ekle (Mate)";
+            document.getElementById('assembly-btn').style.background = '#8e44ad';
+            document.getElementById('assembly-btn').innerText = "🔧 İlişki Ekle (Mate)";
             document.getElementById('status-banner').style.display = 'none';
+            document.getElementById('mate-popup-panel').style.display = 'none';
             controls.enabled = true;
         }
 
-        // --- HAKİKİ DÜZLEMSEL MONTAJ İLİŞKİSİ (SOLIDWORKS MATE ENGINE) ---
-        function executeSolidMate() {
-            const offsetStr = prompt("Montaj ilişkisi mesafesini girin (Çakışık/Yüz yüze için: 0 , Paralel Uzaklık için mm değeri girin):", "0");
-            const offset = parseFloat(offsetStr) || 0;
-
-            const f1 = selectedMateFaces[0]; // Sabit kalacak düzlem bilgisi
-            const f2 = selectedMateFaces[1]; // f1'e kenetlenecek hareketli düzlem bilgisi
-
-            // 1. ADIM: ROTASYON HİZALAMA (Düzlemleri Karşı Karşıya Getirme)
-            // İkinci yüzeyin normalini, birinci yüzeyin ters yönüne bakacak şekle getiriyoruz (-f1.normal)
-            const targetNormal = f1.normal.clone().negate();
-            const rotationQuaternion = new THREE.Quaternion().setFromUnitVectors(f2.normal, targetNormal);
-            
-            // Dönüşü hareketli parçanın tüm grubuna uygula
-            f2.parentGroup.quaternion.premultiply(rotationQuaternion);
-            f2.parentGroup.updateMatrixWorld();
-
-            // 2. ADIM: POZİSYON HİZALAMA (Düzlemleri Çakıştırma / Mesafe Koyma)
-            // İlk yüzeyin üzerinden offset mesafesi kadar ilerideki hedef montaj noktasını bul
-            const targetWorldPoint = f1.point.clone().add(f1.normal.clone().multiplyScalar(offset));
-
-            // İkinci yüzeyin tıklanan noktasının, kendi parça merkezine olan mesafesini bul
-            const f2CenterToTouchPoint = f2.point.clone().sub(f2.parentGroup.position);
-            // Parça döndüğü için bu merkez fark vektörünü de yeni rotasyonla güncelle
-            f2CenterToTouchPoint.applyQuaternion(rotationQuaternion);
-
-            // Hareketli parçayı tam hedef noktaya yerleştir (aradaki farkı çıkararak)
-            f2.parentGroup.position.copy(targetWorldPoint.sub(f2CenterToTouchPoint));
-            f2.parentGroup.updateMatrixWorld();
-
-            // Sistemi başarıyla kapat ve renkleri sıfırla
-            alert("Montaj İlişkisi Başarıyla Tamamlandı!");
-            resetMateSystem();
-        }
-
-        // --- DİĞER ARAYÜZ YAPILARI ---
+        // Arayüz Pencere Fonksiyonları
         function openModal() { document.getElementById('part-modal').style.display = 'block'; document.getElementById('overlay').style.display = 'block'; }
         function closeModal() { document.getElementById('part-modal').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
-        document.getElementById('bg-picker').addEventListener('input', (e) => { scene.background.set(e.target.value); });
         function onResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
         function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
 
