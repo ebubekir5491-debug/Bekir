@@ -19,8 +19,8 @@
         .btn-nav:hover { background-color: #0056b3; }
         
         /* Form ve Tablo Alanları */
-        .main-container { display: flex; gap: 20px; }
-        .form-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 350px; flex-shrink: 0; }
+        .main-container { display: flex; gap: 20px; align-items: flex-start; }
+        .form-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 400px; flex-shrink: 0; max-height: 85vh; overflow-y: auto; }
         .table-box { flex-grow: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         
         .form-group { margin-bottom: 12px; }
@@ -65,13 +65,12 @@
                 <label for="jsonFileInput" style="cursor:pointer;">📂 Listeyi Yükle (JSON): </label>
                 <input type="file" id="jsonFileInput" accept=".json" onchange="loadJSON(this)">
             </div>
-            <!-- Analiz Paneline Geçiş Butonu -->
             <button class="btn-nav" onclick="window.location.href='Durum.html'">📊 Durum Analiz Paneline Git</button>
         </div>
     </div>
 
     <div class="main-container">
-        <!-- Sol Taraf: Kayıt ve Düzenleme Formu -->
+        <!-- Sol Taraf: Tam Detaylı Kayıt ve Düzenleme Formu -->
         <div class="form-box">
             <h3 id="formTitle" style="margin-top:0; color:#28a745; border-bottom:2px solid #eee; padding-bottom:5px;">🛠️ Yeni Sıkıcı Ekle</h3>
             <input type="hidden" id="editIndex" value="-1">
@@ -93,7 +92,7 @@
                 <input type="text" id="model" placeholder="Örn: Tensor STR">
             </div>
             <div class="form-group">
-                <label>Tork Aralığı:</label>
+                <label>Tork Aralığı (Min-Max):</label>
                 <input type="text" id="tork" placeholder="Örn: 10-50 Nm">
             </div>
             <div class="form-group">
@@ -105,6 +104,22 @@
                 </select>
             </div>
             <div class="form-group">
+                <label>Bulunduğu Hat:</label>
+                <input type="text" id="hat" placeholder="Örn: Gövde Montaj Hattı">
+            </div>
+            <div class="form-group">
+                <label>İstasyon-AGP:</label>
+                <input type="text" id="istasyon" placeholder="Örn: AGP-05">
+            </div>
+            <div class="form-group">
+                <label>Operasyon Alan Sorumlusu:</label>
+                <input type="text" id="sorumlu" placeholder="Örn: Ahmet Yılmaz">
+            </div>
+            <div class="form-group">
+                <label>Kalibrasyon Tarihi:</label>
+                <input type="text" id="kalibrasyon" placeholder="Örn: 12.04.2026 veya Tarih">
+            </div>
+            <div class="form-group">
                 <label>Durum:</label>
                 <select id="durum">
                     <option value="Aktif">Aktif</option>
@@ -114,16 +129,24 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Görsel URL / Base64:</label>
-                <input type="text" id="gorsel" placeholder="Resim linki veya bos bırakın">
+                <label>Arızalı Kök Neden:</label>
+                <input type="text" id="kokNeden" placeholder="Cihaz arızalı ise nedenini girin">
             </div>
             <div class="form-group">
-                <label>Bulunduğu Hat / İstasyon:</label>
-                <input type="text" id="hat" placeholder="Örn: Gövde Montaj / AGP-05">
+                <label>Açıklama:</label>
+                <textarea id="aciklama" rows="2" placeholder="Cihaza dair ekstra notlar..."></textarea>
             </div>
             <div class="form-group">
-                <label>Alım Tarihi:</label>
+                <label>Teslim Alındığı Tarih:</label>
+                <input type="text" id="teslimTarihi" placeholder="Örn: 10.05.2025">
+            </div>
+            <div class="form-group">
+                <label>Alım Tarihi (Yaşlanma İçin - YYYY-MM-DD):</label>
                 <input type="date" id="alimTarihi">
+            </div>
+            <div class="form-group">
+                <label>Görsel URL / Base64:</label>
+                <input type="text" id="gorsel" placeholder="Resim linki veya boş bırakın">
             </div>
             
             <button class="btn-block btn-save" onclick="kaydet()">💾 Listeye Kaydet</button>
@@ -159,7 +182,6 @@
     <script>
         let sikiciListesi = [];
 
-        // Sayfa ilk açıldığında localStorage hafızasında kayıt var mı diye kontrol eder
         window.onload = function() {
             const kayitliVeri = localStorage.getItem('sikiciListesiVerisi');
             if (kayitliVeri) {
@@ -172,12 +194,10 @@
             }
         };
 
-        // Hafızayı senkronize eden ortak fonksiyon
         function hafizayiGuncelle() {
             localStorage.setItem('sikiciListesiVerisi', JSON.stringify(sikiciListesi));
         }
 
-        // Dışarıdan seçilen JSON dosyasını okur ve hafızaya yazar
         function loadJSON(input) {
             if (!input.files || input.files.length === 0) return;
             const okuyucu = new FileReader();
@@ -187,11 +207,8 @@
                     const temizVeri = JSON.parse(e.target.result.trim());
                     if (Array.isArray(temizVeri)) { 
                         sikiciListesi = temizVeri; 
-                        
-                        // Durum sayfasının anlık görmesi için tarayıcı hafızasına yazıyoruz
                         hafizayiGuncelle();
                         tabloyuGuncelle();
-                        
                         alert(`Başarılı! ${temizVeri.length} adet sıkıcı cihazı başarıyla yüklendi.`);
                     } else { alert("Hata: JSON formatı bir dizi (array) olmalıdır!"); }
                 } catch (error) { alert("Hata: JSON dosyası çözümlenemedi!"); }
@@ -200,7 +217,6 @@
             okuyucu.readAsText(input.files[0], "UTF-8");
         }
 
-        // Form verilerini listeye ekler veya düzenler
         function kaydet() {
             const seriNo = document.getElementById('seriNo').value.trim();
             const idNo = document.getElementById('idNo').value.trim();
@@ -208,10 +224,16 @@
             const model = document.getElementById('model').value.trim();
             const tork = document.getElementById('tork').value.trim();
             const tip = document.getElementById('tip').value;
-            const durum = document.getElementById('durum').value;
-            const gorsel = document.getElementById('gorsel').value.trim();
             const hat = document.getElementById('hat').value.trim();
+            const istasyon = document.getElementById('istasyon').value.trim();
+            const sorumlu = document.getElementById('sorumlu').value.trim();
+            const kalibrasyon = document.getElementById('kalibrasyon').value.trim();
+            const durum = document.getElementById('durum').value;
+            const kokNeden = document.getElementById('kokNeden').value.trim();
+            const aciklama = document.getElementById('aciklama').value.trim();
+            const teslimTarihi = document.getElementById('teslimTarihi').value.trim();
             const alimTarihi = document.getElementById('alimTarihi').value;
+            const gorsel = document.getElementById('gorsel').value.trim();
             const editIndex = parseInt(document.getElementById('editIndex').value);
 
             if (!seriNo || !idNo) {
@@ -219,7 +241,6 @@
                 return;
             }
 
-            // Eğer yeni ekleme yapılıyorsa ve Seri No zaten mevcutsa engelle
             if (editIndex === -1 && sikiciListesi.some(s => String(s.seriNo).toLowerCase() === seriNo.toLowerCase())) {
                 alert("Bu Seri Numarasına sahip bir cihaz zaten listede var!");
                 return;
@@ -228,25 +249,33 @@
             const logTarih = new Date().toISOString().split('T')[0];
 
             if (editIndex === -1) {
-                // Yeni Cihaz Ekleme
+                // Yeni Cihaz
                 const yeniCihaz = {
-                    seriNo, idNo, marka, model, tork, tip, durum, gorsel, hat, alimTarihi,
+                    seriNo, idNo, marka, model, tork, tip, hat, istasyon, sorumlu, kalibrasyon, 
+                    durum, kokNeden, aciklama, teslimTarihi, alimTarihi, gorsel,
                     logs: [{ tarih: logTarih, mesaj: "Cihaz envantere yeni kaydedildi." }]
                 };
                 sikiciListesi.push(yeniCihaz);
             } else {
-                // Mevcut Cihazı Düzenleme
+                // Düzenleme
                 const eskiDurum = sikiciListesi[editIndex].durum;
+                
                 sikiciListesi[editIndex].seriNo = seriNo;
                 sikiciListesi[editIndex].idNo = idNo;
                 sikiciListesi[editIndex].marka = marka;
                 sikiciListesi[editIndex].model = model;
                 sikiciListesi[editIndex].tork = tork;
                 sikiciListesi[editIndex].tip = tip;
-                sikiciListesi[editIndex].durum = durum;
-                sikiciListesi[editIndex].gorsel = gorsel;
                 sikiciListesi[editIndex].hat = hat;
+                sikiciListesi[editIndex].istasyon = istasyon;
+                sikiciListesi[editIndex].sorumlu = sorumlu;
+                sikiciListesi[editIndex].kalibrasyon = kalibrasyon;
+                sikiciListesi[editIndex].durum = durum;
+                sikiciListesi[editIndex].kokNeden = kokNeden;
+                sikiciListesi[editIndex].aciklama = aciklama;
+                sikiciListesi[editIndex].teslimTarihi = teslimTarihi;
                 sikiciListesi[editIndex].alimTarihi = alimTarihi;
+                sikiciListesi[editIndex].gorsel = gorsel;
 
                 if (eskiDurum !== durum) {
                     if (!sikiciListesi[editIndex].logs) sikiciListesi[editIndex].logs = [];
@@ -262,7 +291,6 @@
             formuTemizle();
         }
 
-        // Satırdaki verileri düzenlemek için forma yükler
         function cihazDuzenle(index) {
             const cihaz = sikiciListesi[index];
             document.getElementById('seriNo').value = cihaz.seriNo;
@@ -271,17 +299,22 @@
             document.getElementById('model').value = cihaz.model || '';
             document.getElementById('tork').value = cihaz.tork || '';
             document.getElementById('tip').value = cihaz.tip || 'Elektrikli';
-            document.getElementById('durum').value = cihaz.durum || 'Aktif';
-            document.getElementById('gorsel').value = cihaz.gorsel || '';
             document.getElementById('hat').value = cihaz.hat || '';
+            document.getElementById('istasyon').value = cihaz.istasyon || '';
+            document.getElementById('sorumlu').value = cihaz.sorumlu || '';
+            document.getElementById('kalibrasyon').value = cihaz.kalibrasyon || '';
+            document.getElementById('durum').value = cihaz.durum || 'Aktif';
+            document.getElementById('kokNeden').value = cihaz.kokNeden || '';
+            document.getElementById('aciklama').value = cihaz.aciklama || '';
+            document.getElementById('teslimTarihi').value = cihaz.teslimTarihi || '';
             document.getElementById('alimTarihi').value = cihaz.alimTarihi || '';
+            document.getElementById('gorsel').value = cihaz.gorsel || '';
             
             document.getElementById('editIndex').value = index;
             document.getElementById('formTitle').innerHTML = "📝 Cihaz Bilgilerini Düzenle";
             document.getElementById('formTitle').style.color = "#ffc107";
         }
 
-        // Cihazı listeden siler
         function cihazSil(index) {
             if (confirm("Bu sıkıcı cihazını envanterden silmek istediğinize emin misiniz?")) {
                 sikiciListesi.splice(index, 1);
@@ -290,23 +323,27 @@
             }
         }
 
-        // Form girdilerini sıfırlar
         function formuTemizle() {
             document.getElementById('seriNo').value = '';
             document.getElementById('idNo').value = '';
             document.getElementById('marka').value = '';
             document.getElementById('model').value = '';
             document.getElementById('tork').value = '';
-            document.getElementById('gorsel').value = '';
             document.getElementById('hat').value = '';
+            document.getElementById('istasyon').value = '';
+            document.getElementById('sorumlu').value = '';
+            document.getElementById('kalibrasyon').value = '';
+            document.getElementById('kokNeden').value = '';
+            document.getElementById('aciklama').value = '';
+            document.getElementById('teslimTarihi').value = '';
             document.getElementById('alimTarihi').value = '';
+            document.getElementById('gorsel').value = '';
             document.getElementById('editIndex').value = '-1';
             
             document.getElementById('formTitle').innerHTML = "🛠️ Yeni Sıkıcı Ekle";
             document.getElementById('formTitle').style.color = "#28a745";
         }
 
-        // Hafızayı komple sıfırlama işlevi
         function hafizayiSifirla() {
             if (confirm("Tüm envanter listesini temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
                 sikiciListesi = [];
@@ -315,7 +352,6 @@
             }
         }
 
-        // Tabloyu güncel listeye göre HTML üzerinde yeniden oluşturur
         function tabloyuGuncelle() {
             const tbody = document.getElementById('kontrolTableBody');
             tbody.innerHTML = '';
@@ -346,7 +382,6 @@
             });
         }
 
-        // Listeyi güncel haliyle bilgisayara bir JSON dosyası olarak indirir
         function exportJSON() {
             if (sikiciListesi.length === 0) {
                 alert("İndirmek için listede veri bulunmalıdır!");
