@@ -3,377 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TürkTraktör Erenler Fabrikası Sıkıcı Listesi</title>
+    <title>Sıkıcı Kontrol Paneli</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 20px; background-color: #f5f7fa; color: #333; }
         
-        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #0056b3; padding-bottom: 10px; }
-        h1 { color: #0056b3; margin: 0; font-size: 24px; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 3px solid #28a745; padding-bottom: 15px; }
+        h1 { color: #28a745; margin: 0; font-size: 24px; }
+        h2 { color: #333; font-size: 18px; margin: 25px 0 15px 0; border-left: 5px solid #28a745; padding-left: 10px; }
         
-        .btn { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn:hover { background-color: #0056b3; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        .btn-warning { background-color: #ffc107; color: #212529; }
-        .btn-warning:hover { background-color: #e0a800; }
-        .btn-danger { background-color: #dc3545; color: white; padding: 6px 10px; font-size: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        .btn-danger:hover { background-color: #bd2130; }
+        /* Navigasyon ve Dosya Alanı */
+        .actions-wrapper { display: flex; gap: 15px; align-items: center; }
+        .file-input-wrapper { background-color: #e9ecef; padding: 10px 15px; border-radius: 4px; border: 2px dashed #28a745; font-size: 14px; font-weight: bold; }
+        .btn-nav { background-color: #007bff; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .btn-nav:hover { background-color: #0056b3; }
         
-        /* Grafik Sayfasına Geçiş Buton Rengi */
-        .btn-info { background-color: #17a2b8; color: white; }
-        .btn-info:hover { background-color: #117a8b; }
+        /* Form ve Tablo Alanları */
+        .main-container { display: flex; gap: 20px; }
+        .form-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 350px; flex-shrink: 0; }
+        .table-box { flex-grow: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         
-        .btn-edit { background-color: #ffc107; color: #212529; padding: 6px 10px; font-size: 12px; margin-right: 5px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-edit:hover { background-color: #e0a800; }
-        .btn-lock { background-color: #6c757d; }
-        .btn-lock.unlocked { background-color: #e0a800; color: black; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
         
-        .action-bar { display: flex; gap: 10px; align-items: center; }
-        .file-input-wrapper { background-color: #e9ecef; padding: 8px; border-radius: 4px; border: 1px dashed #6c757d; font-size: 14px; }
-
-        .admin-only { display: none; }
-
-        .table-responsive { overflow-x: auto; background-color: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        th, td { padding: 12px; border: 1px solid #dee2e6; font-size: 14px; text-align: center; vertical-align: middle; }
-        th { background-color: #f8f9fa; color: #495057; font-weight: bold; }
-        tbody tr { cursor: pointer; transition: background 0.2s; }
+        .btn-block { width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 14px; }
+        .btn-save { background-color: #28a745; color: white; }
+        .btn-save:hover { background-color: #218838; }
+        .btn-clear { background-color: #6c757d; color: white; }
+        .btn-clear:hover { background-color: #5a6268; }
+        
+        /* Tablo Tasarımı */
+        .table-responsive { overflow-x: auto; margin-top: 10px; max-height: 650px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 10px; border: 1px solid #dee2e6; font-size: 13px; text-align: center; }
+        th { background-color: #f8f9fa; color: #495057; font-weight: bold; position: sticky; top: 0; z-index: 10; }
         tbody tr:hover { background-color: #f1f5f9; }
-        .img-preview { max-width: 60px; max-height: 60px; object-fit: cover; border-radius: 4px; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background-color: white; padding: 25px; border-radius: 8px; width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .modal-header h2 { margin: 0; font-size: 20px; color: #333; }
-        .close { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
-        .close:hover { color: black; }
-
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .form-group { display: flex; flex-direction: column; text-align: left; }
-        .form-group.full-width { grid-column: span 2; }
-        .form-group label { margin-bottom: 5px; font-weight: 600; font-size: 13px; color: #555; }
-        .form-group input, .form-group select, .form-group textarea { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .form-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
-
-        .detail-list { list-style: none; padding: 0; margin: 0; text-align: left; }
-        .detail-list li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 14px; }
-        .detail-list li strong { color: #555; }
-        .detail-list li span { color: #000; font-weight: 500; text-align: right; max-width: 60%; }
-
-        .log-box { display: none; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin-top: 15px; text-align: left; max-height: 200px; overflow-y: auto; }
-        .log-item { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #ccc; color: #555; }
-        .log-item strong { color: #212529; }
-
-        @media print {
-            body * { visibility: hidden; }
-            #detailModalBody, #detailModalBody * { visibility: visible; }
-            #detailModalBody { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
-            .modal, .modal-content { position: absolute; background: white; width: 100%; height: auto; display: block !important; box-shadow: none; overflow: visible; }
-            .form-actions, .close, .header-container, .log-box, #logToggleBtn { display: none !important; }
-        }
+        
+        .img-preview { max-width: 40px; max-height: 40px; object-fit: cover; border-radius: 4px; }
+        
+        /* Durum Etiketleri */
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; color: white; display: inline-block; width: 100px; text-transform: uppercase; }
+        .status-aktif { background-color: #28a745; }
+        .status-arızalı { background-color: #dc3545; }
+        .status-yedek { background-color: #ffc107; color: #212529; }
+        .status-kalibrasyonda { background-color: #17a2b8; }
+        
+        .btn-row { padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; color: white; }
+        .btn-edit { background-color: #ffc107; color: black; margin-right: 5px; }
+        .btn-delete { background-color: #dc3545; }
+        
+        .json-actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
     </style>
 </head>
 <body>
 
     <div class="header-container">
-        <h1>TÜRKTRAKTÖR ERENLER FABRİKASI SIKICI LİSTESİ</h1>
-        <div class="action-bar">
-            <!-- Durum Grafiği Sayfasına Geçiş Butonu -->
-            <button class="btn btn-info" onclick="window.location.href='durum.html'">📊 Durum Grafikleri</button>
-            
-            <button id="lockBtn" class="btn btn-lock" onclick="toggleEditMode()">🔒 Düzenleme Modunu Aç</button>
+        <h1>📋 TÜRKTRAKTÖR ERENLER FABRİKASI - SIKICI KONTROL PANELİ</h1>
+        <div class="actions-wrapper">
             <div class="file-input-wrapper">
-                <label for="jsonFileInput" style="cursor:pointer; font-weight:bold;">📂 JSON Dosyası Seç: </label>
+                <label for="jsonFileInput" style="cursor:pointer;">📂 Listeyi Yükle (JSON): </label>
                 <input type="file" id="jsonFileInput" accept=".json" onchange="loadJSON(this)">
             </div>
-            <button class="btn btn-success" onclick="saveJSON()">💾 Listeyi JSON Olarak Kaydet</button>
-            <button class="btn admin-only" onclick="openModal()">➕ Sıkıcı Ekle</button>
+            <!-- Analiz Paneline Geçiş Butonu -->
+            <button class="btn-nav" onclick="window.location.href='Durum.html'">📊 Durum Analiz Paneline Git</button>
         </div>
-    </div>
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th class="admin-only" id="thAction">İşlemler</th>
-                    <th>Görsel</th>
-                    <th>Seri No</th>
-                    <th>ID No</th>
-                    <th>Model</th>
-                    <th>Marka</th>
-                    <th>Tork Aralığı</th>
-                    <th>Tip</th>
-                    <th>Durum</th>
-                </tr>
-            </thead>
-            <tbody id="sikiciTableBody"></tbody>
-        </table>
     </div>
 
-    <div id="sikiciModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Yeni Sıkıcı Ekle</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
+    <div class="main-container">
+        <!-- Sol Taraf: Kayıt ve Düzenleme Formu -->
+        <div class="form-box">
+            <h3 id="formTitle" style="margin-top:0; color:#28a745; border-bottom:2px solid #eee; padding-bottom:5px;">🛠️ Yeni Sıkıcı Ekle</h3>
+            <input type="hidden" id="editIndex" value="-1">
+            
+            <div class="form-group">
+                <label>Seri No (Benzersiz):</label>
+                <input type="text" id="seriNo" placeholder="Örn: 20M123456">
             </div>
-            <form id="sikiciForm" onsubmit="handleFormSubmit(event)">
-                <input type="hidden" id="editIndex" value="">
-                <div class="form-grid">
-                    <div class="form-group"> <label>Seri No</label> <input type="text" id="seriNo" required> </div>
-                    <div class="form-group"> <label>ID No</label> <input type="text" id="idNo" required> </div>
-                    <div class="form-group"> <label>Model</label> <input type="text" id="model" required> </div>
-                    <div class="form-group"> <label>Marka</label> <input type="text" id="marka" required> </div>
-                    <div class="form-group"> <label>Tork Aralığı (Min-Max)</label> <input type="text" id="tork" placeholder="Örn: 10-50 Nm" required> </div>
-                    <div class="form-group"> <label>Tip</label> <input type="text" id="tip" required> </div>
-                    <div class="form-group"> <label>Hat</label> <input type="text" id="hat" required> </div>
-                    <div class="form-group"> <label>İstasyon-AGP</label> <input type="text" id="istasyon" required> </div>
-                    <div class="form-group"> <label>Operasyon Alan Sorumlusu</label> <input type="text" id="sorumlu" required> </div>
-                    <div class="form-group"> <label>Kalibrasyon Tarihi</label> <input type="date" id="kalibrasyon" required> </div>
-                    <div class="form-group">
-                        <label>Durum</label>
-                        <select id="durum">
-                            <option value="Aktif">Aktif</option> <option value="Arızalı">Arızalı</option>
-                            <option value="Yedek">Yedek</option> <option value="Kalibrasyonda">Kalibrasyonda</option>
-                        </select>
-                    </div>
-                    <div class="form-group"> <label>Teslim Alındığı Tarih</label> <input type="date" id="teslimTarihi"> </div>
-                    <div class="form-group"> <label>Alım Tarihi</label> <input type="date" id="alimTarihi"> </div>
-                    <div class="form-group"> <label>Görsel (Dosya Adı)</label> <input type="text" id="gorsel" placeholder="Örn: resim1.jpg"> </div>
-                    <div class="form-group full-width"> <label>Arızalı Kök Neden</label> <input type="text" id="kokNeden"> </div>
-                    <div class="form-group full-width"> <label>Açıklama</label> <textarea id="aciklama" rows="2"></textarea> </div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn" style="background-color: #6c757d;" onclick="closeModal()">İptal</button>
-                    <button type="submit" class="btn btn-success" id="saveBtn">Kaydet</button>
-                </div>
-            </form>
+            <div class="form-group">
+                <label>ID No:</label>
+                <input type="text" id="idNo" placeholder="Örn: TT-9876">
+            </div>
+            <div class="form-group">
+                <label>Marka:</label>
+                <input type="text" id="marka" placeholder="Örn: Atlas Copco">
+            </div>
+            <div class="form-group">
+                <label>Model:</label>
+                <input type="text" id="model" placeholder="Örn: Tensor STR">
+            </div>
+            <div class="form-group">
+                <label>Tork Aralığı:</label>
+                <input type="text" id="tork" placeholder="Örn: 10-50 Nm">
+            </div>
+            <div class="form-group">
+                <label>Tip:</label>
+                <select id="tip">
+                    <option value="Elektrikli">Elektrikli</option>
+                    <option value="Bataryalı">Bataryalı</option>
+                    <option value="Pnömatik">Pnömatik</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Durum:</label>
+                <select id="durum">
+                    <option value="Aktif">Aktif</option>
+                    <option value="Arızalı">Arızalı</option>
+                    <option value="Yedek">Yedek</option>
+                    <option value="Kalibrasyonda">Kalibrasyonda</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Görsel URL / Base64:</label>
+                <input type="text" id="gorsel" placeholder="Resim linki veya bos bırakın">
+            </div>
+            <div class="form-group">
+                <label>Bulunduğu Hat / İstasyon:</label>
+                <input type="text" id="hat" placeholder="Örn: Gövde Montaj / AGP-05">
+            </div>
+            <div class="form-group">
+                <label>Alım Tarihi:</label>
+                <input type="date" id="alimTarihi">
+            </div>
+            
+            <button class="btn-block btn-save" onclick="kaydet()">💾 Listeye Kaydet</button>
+            <button class="btn-block btn-clear" onclick="formuTemizle()">Vazgeç / Temizle</button>
         </div>
-    </div>
-    <div id="detailModal" class="modal" onclick="closeDetailModalExternally(event)">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>🔍 Sıkıcı Detay Bilgileri</h2>
-                <span class="close" onclick="closeDetailModal()">&times;</span>
+
+        <!-- Sağ Taraf: Mevcut Sıkıcı Listesi Yönetimi -->
+        <div class="table-box">
+            <h3 style="margin-top:0; color:#333;">📦 Fabrika Cihaz Listesi Envanteri</h3>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Görsel</th> <th>Seri No</th> <th>ID No</th> <th>Marka - Model</th> <th>Tip</th> <th>Durum</th> <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kontrolTableBody">
+                        <tr>
+                            <td colspan="7" style="color:#888; padding:30px;">⚠️ Lütfen yukarıdan JSON dosyanızı yükleyin veya yeni cihaz ekleyin.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div id="detailModalBody"></div>
-            <div id="logBox" class="log-box"></div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-warning" id="logToggleBtn" onclick="toggleLogBox()">📜 Log Raporu Göster</button>
-                <button type="button" class="btn btn-success" id="pdfBtn">📄 PDF Olarak Kaydet</button>
-                <button type="button" class="btn" style="background-color: #007bff;" onclick="closeDetailModal()">Kapat</button>
+            
+            <div class="json-actions">
+                <button class="btn-row" style="background-color: #17a2b8; padding:10px 15px;" onclick="hafizayiSifirla()">🔄 Hafızayı Boşalt</button>
+                <button class="btn-row" style="background-color: #218838; padding:10px 15px;" onclick="exportJSON()">📥 Güncel JSON Olarak İndir</button>
             </div>
         </div>
     </div>
 
     <script>
         let sikiciListesi = [];
-        let editModeActive = false;
 
-        function toggleEditMode() {
-            if (!editModeActive) {
-                const sifre = prompt("Lütfen düzenleme modu şifresini giriniz:");
-                if (sifre === "Proses") {
-                    editModeActive = true;
-                    document.getElementById("lockBtn").innerHTML = "🔓 Düzenleme Modu Açık (Kapat)";
-                    document.getElementById("lockBtn").classList.add("unlocked");
-                    alert("Düzenleme modu aktif! İşlemleri yapabilirsiniz.");
-                } else { alert("❌ Hatalı şifre!"); return; }
-            } else {
-                editModeActive = false;
-                document.getElementById("lockBtn").innerHTML = "🔒 Düzenleme Modunu Aç";
-                document.getElementById("lockBtn").classList.remove("unlocked");
-                alert("Düzenleme modu kapatıldı.");
-            }
-            tabloyuGuncelle();
-            yetkiArayuzunuGuncelle();
-        }
-
-        function yetkiArayuzunuGuncelle() {
-            const adminElements = document.querySelectorAll(".admin-only");
-            adminElements.forEach(el => {
-                el.style.display = editModeActive ? (el.tagName === "TH" || el.tagName === "TD" ? "table-cell" : "block") : "none";
-            });
-        }
-
-        function openModal() {
-            document.getElementById('modalTitle').innerHTML = "Yeni Sıkıcı Ekle";
-            document.getElementById('editIndex').value = "";
-            document.getElementById('seriNo').disabled = false;
-            document.getElementById('sikiciModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('sikiciModal').style.display = 'none';
-            document.getElementById('sikiciForm').reset();
-            document.getElementById('editIndex').value = "";
-        }
-
-        function toggleLogBox() {
-            const logBox = document.getElementById('logBox');
-            const btn = document.getElementById('logToggleBtn');
-            if (logBox.style.display === 'block') {
-                logBox.style.display = 'none';
-                btn.innerHTML = "📜 Log Raporu Göster";
-            } else {
-                logBox.style.display = 'block';
-                btn.innerHTML = "🙈 Log Raporu Gizle";
-            }
-        }
-        function yaslanmaHesapla(alimTarihiStr) {
-            if (!alimTarihiStr) return "-";
-            const alimTarihi = new Date(alimTarihiStr);
-            const simdi = new Date();
-            if (isNaN(alimTarihi.getTime())) return "-";
-            const farkGun = Math.floor((simdi.getTime() - alimTarihi.getTime()) / (1000 * 60 * 60 * 24));
-            return farkGun >= 0 ? `${farkGun} Gün` : "0 Gün";
-        }
-
-        function showDetails(index, event) {
-            if (event.target.closest('.admin-only')) return;
-            const item = sikiciListesi[index];
-            const body = document.getElementById('detailModalBody');
-            document.getElementById('logBox').style.display = 'none';
-            document.getElementById('logToggleBtn').innerHTML = "📜 Log Raporu Göster";
-
-            let imgHtml = item.gorsel ? `<div style="text-align:center; margin-bottom:15px;"><img src="${item.gorsel}" style="max-width:180px; max-height:180px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.15);" onerror="this.src='https://placeholder.com'"></div>` : '';
-            const dinamikYaslanma = yaslanmaHesapla(item.alimTarihi);
-
-            body.innerHTML = `
-                ${imgHtml}
-                <ul class="detail-list">
-                    <li><strong>Seri No:</strong> <span>${item.seriNo}</span></li> <li><strong>ID No:</strong> <span>${item.idNo}</span></li>
-                    <li><strong>Model:</strong> <span>${item.model}</span></li> <li><strong>Marka:</strong> <span>${item.marka}</span></li>
-                    <li><strong>Tork Aralığı (Min-Max):</strong> <span>${item.tork}</span></li> <li><strong>Tip:</strong> <span>${item.tip}</span></li>
-                    <li><strong>Hat:</strong> <span>${item.hat || '-'}</span></li> <li><strong>İstasyon-AGP:</strong> <span>${item.istasyon || '-'}</span></li>
-                    <li><strong>Operasyon Alan Sorumlusu:</strong> <span>${item.sorumlu || '-'}</span></li> <li><strong>Kalibrasyon Tarihi:</strong> <span>${item.kalibrasyon || '-'}</span></li>
-                    <li><strong>Durum:</strong> <span>${item.durum}</span></li> <li><strong>Arızalı Kök Neden:</strong> <span>${item.kokNeden || '-'}</span></li>
-                    <li><strong>Açıklama:</strong> <span>${item.aciklama || '-'}</span></li> <li><strong>Teslim Alındığı Tarih:</strong> <span>${item.teslimTarihi || '-'}</span></li>
-                    <li><strong>Alım Tarihi:</strong> <span>${item.alimTarihi || '-'}</span></li>
-                    <li style="background-color: #f8f9fa; font-weight: bold;"><strong>Yaşlanma Süresi:</strong> <span style="color: #0056b3;">${dinamikYaslanma}</span></li>
-                </ul>
-            `;
-            
-            const logBox = document.getElementById('logBox');
-            logBox.innerHTML = '';
-            if (item.logs && item.logs.length > 0) {
-                item.logs.forEach(log => {
-                    logBox.innerHTML += `<div class="log-item">📅 <strong>${log.tarih}:</strong> ${log.mesaj}</div>`;
-                });
-            } else {
-                logBox.innerHTML = '<div class="log-item" style="text-align:center; color:#999;">Değişiklik kaydı bulunmuyor.</div>';
-            }
-
-            document.getElementById('pdfBtn').onclick = function() {
-                const eskiBaslik = document.title;
-                document.title = String(item.seriNo).trim();
-                window.print();
-                document.title = eskiBaslik;
-            };
-            document.getElementById('detailModal').style.display = 'flex';
-        }
-
-        function closeDetailModal() { document.getElementById('detailModal').style.display = 'none'; }
-        function closeDetailModalExternally(e) { if(e.target.id === 'detailModal') closeDetailModal(); }
-        function handleFormSubmit(event) {
-            event.preventDefault();
-            const index = document.getElementById('editIndex').value;
-            const sNo = document.getElementById('seriNo').value.trim();
-
-            const yeniData = {
-                seriNo: sNo, idNo: document.getElementById('idNo').value, model: document.getElementById('model').value,
-                marka: document.getElementById('marka').value, tork: document.getElementById('tork').value, tip: document.getElementById('tip').value,
-                hat: document.getElementById('hat').value, istasyon: document.getElementById('istasyon').value, sorumlu: document.getElementById('sorumlu').value,
-                kalibrasyon: document.getElementById('kalibrasyon').value, durum: document.getElementById('durum').value, kokNeden: document.getElementById('kokNeden').value,
-                aciklama: document.getElementById('aciklama').value, teslimTarihi: document.getElementById('teslimTarihi').value, alimTarihi: document.getElementById('alimTarihi').value, 
-                gorsel: document.getElementById('gorsel').value, logs: []
-            };
-
-            const simdi = new Date();
-            const tarihZamani = `${String(simdi.getDate()).padStart(2, '0')}.${String(simdi.getMonth() + 1).padStart(2, '0')}.${simdi.getFullYear()} ${String(simdi.getHours()).padStart(2, '0')}:${String(simdi.getMinutes()).padStart(2, '0')}`;
-
-            if (index === "") {
-                if (sikiciListesi.some(item => String(item.seriNo).trim().toLowerCase() === sNo.toLowerCase())) {
-                    alert(`⚠️ Hata: "${sNo}" Seri Numaralı sıkıcı zaten kayıtlı!`); return;
+        // Sayfa ilk açıldığında localStorage hafızasında kayıt var mı diye kontrol eder
+        window.onload = function() {
+            const kayitliVeri = localStorage.getItem('sikiciListesiVerisi');
+            if (kayitliVeri) {
+                try {
+                    sikiciListesi = JSON.parse(kayitliVeri);
+                    tabloyuGuncelle();
+                } catch (e) {
+                    console.error("Hafıza yüklenirken hata oluştu.", e);
                 }
-                yeniData.logs.push({ tarih: tarihZamani, mesaj: "Sıkıcı sisteme yeni kayıt olarak eklendi." });
-                sikiciListesi.push(yeniData);
-            } else {
-                const eskiData = sikiciListesi[parseInt(index)];
-                yeniData.logs = eskiData.logs || [];
-                const alanlar = [
-                    { ad: "Durum", k: "durum" }, { ad: "Açıklama", k: "aciklama" }, 
-                    { ad: "Kalibrasyon Tarihi", k: "kalibrasyon" }, { ad: "İstasyon-AGP", k: "istasyon" },
-                    { ad: "Hat", k: "hat" }, { ad: "Operasyon Alan Sorumlusu", k: "sorumlu" },
-                    { ad: "Arızalı Kök Neden", k: "kokNeden" }, { ad: "Teslim Alındığı Tarih", k: "teslimTarihi" }
-                ];
-                alanlar.forEach(alan => {
-                    if (String(eskiData[alan.k] || '').trim() !== String(yeniData[alan.k] || '').trim()) {
-                        yeniData.logs.push({
-                            tarih: tarihZamani,
-                            mesaj: `<strong>${alan.ad}</strong> alanı değiştirildi: "${eskiData[alan.k] || 'Boş'}" ➡️ "${yeniData[alan.k] || 'Boş'}"`
-                        });
-                    }
-                });
-                sikiciListesi[parseInt(index)] = yeniData;
             }
-            tabloyuGuncelle(); closeModal();
+        };
+
+        // Hafızayı senkronize eden ortak fonksiyon
+        function hafizayiGuncelle() {
+            localStorage.setItem('sikiciListesiVerisi', JSON.stringify(sikiciListesi));
         }
 
-        function editSikici(index) {
-            if (!editModeActive) return;
-            const item = sikiciListesi[index];
-            document.getElementById('modalTitle').innerHTML = "Sıkıcı Bilgilerini Düzenle";
-            document.getElementById('editIndex').value = index;
-            document.getElementById('seriNo').value = item.seriNo; document.getElementById('seriNo').disabled = true;
-            document.getElementById('idNo').value = item.idNo; document.getElementById('model').value = item.model;
-            document.getElementById('marka').value = item.marka; document.getElementById('tork').value = item.tork;
-            document.getElementById('tip').value = item.tip; document.getElementById('hat').value = item.hat;
-            document.getElementById('istasyon').value = item.istasyon; document.getElementById('sorumlu').value = item.sorumlu;
-            document.getElementById('kalibrasyon').value = item.kalibrasyon; document.getElementById('durum').value = item.durum;
-            document.getElementById('kokNeden').value = item.kokNeden; document.getElementById('aciklama').value = item.aciklama;
-            document.getElementById('teslimTarihi').value = item.teslimTarihi; document.getElementById('alimTarihi').value = item.alimTarihi;
-            document.getElementById('gorsel').value = item.gorsel || '';
-            document.getElementById('sikiciModal').style.display = 'flex';
-        }
-
-        function deleteSikici(index) {
-            if (!editModeActive) return;
-            if (confirm(`"${sikiciListesi[index].seriNo}" kayıtlı cihazı silmek istiyor musunuz?`)) {
-                sikiciListesi.splice(index, 1); tabloyuGuncelle();
-            }
-        }
-
-        function tabloyuGuncelle() {
-            const tbody = document.getElementById('sikiciTableBody'); tbody.innerHTML = '';
-            sikiciListesi.forEach((item, index) => {
-                const tr = document.createElement('tr');
-                tr.setAttribute("onclick", `showDetails(${index}, event)`);
-                let imgHtml = item.gorsel ? `<img src="${item.gorsel}" class="img-preview" onerror="this.src='https://placeholder.com'">` : '<span>Yok</span>';
-                let islemlerHtml = editModeActive ? `<td class="admin-only"><button class="btn-edit" onclick="editSikici(${index})">Düzelt</button><button class="btn-danger" onclick="deleteSikici(${index})">Sil</button></td>` : `<td class="admin-only" style="display:none;"></td>`;
-                tr.innerHTML = `${islemlerHtml}<td>${imgHtml}</td><td style="font-weight:bold;">${item.seriNo}</td><td>${item.idNo}</td><td>${item.model}</td><td>${item.marka}</td><td>${item.tork}</td><td>${item.tip}</td><td>${item.durum}</td>`;
-                tbody.appendChild(tr);
-            });
-            yetkiArayuzunuGuncelle();
-        }
-
-        function saveJSON() {
-            if(sikiciListesi.length === 0) { alert("Liste boş!"); return; }
-            const simdi = new Date();
-            const dosyaAdi = `sikici_listesi_${simdi.getFullYear()}-${String(simdi.getMonth() + 1).padStart(2, '0')}-${String(simdi.getDate()).padStart(2, '0')}_${String(simdi.getHours()).padStart(2, '0')}-${String(simdi.getMinutes()).padStart(2, '0')}.json`;
-            const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([JSON.stringify(sikiciListesi, null, 2)], {type : 'application/json'}));
-            link.download = dosyaAdi; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        }
-
+        // Dışarıdan seçilen JSON dosyasını okur ve hafızaya yazar
         function loadJSON(input) {
             if (!input.files || input.files.length === 0) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
+            const okuyucu = new FileReader();
+            
+            okuyucu.onload = function(e) {
                 try {
-                    const veri = JSON.parse(e.target.result.trim());
-                    if (Array.isArray(veri)) { sikiciListesi = veri; tabloyuGuncelle(); alert(`Yüklendi! ${veri.length} kayıt aktif.`); }
-                } catch (error) { alert("Hata: Dosya okunamadı!"); }
+                    const temizVeri = JSON.parse(e.target.result.trim());
+                    if (Array.isArray(temizVeri)) { 
+                        sikiciListesi = temizVeri; 
+                        
+                        // Durum sayfasının anlık görmesi için tarayıcı hafızasına yazıyoruz
+                        hafizayiGuncelle();
+                        tabloyuGuncelle();
+                        
+                        alert(`Başarılı! ${temizVeri.length} adet sıkıcı cihazı başarıyla yüklendi.`);
+                    } else { alert("Hata: JSON formatı bir dizi (array) olmalıdır!"); }
+                } catch (error) { alert("Hata: JSON dosyası çözümlenemedi!"); }
                 input.value = '';
             };
-            reader.readAsText(input.files[0], "UTF-8");
+            okuyucu.readAsText(input.files[0], "UTF-8");
+        }
+
+        // Form verilerini listeye ekler veya düzenler
+        function kaydet() {
+            const seriNo = document.getElementById('seriNo').value.trim();
+            const idNo = document.getElementById('idNo').value.trim();
+            const marka = document.getElementById('marka').value.trim();
+            const model = document.getElementById('model').value.trim();
+            const tork = document.getElementById('tork').value.trim();
+            const tip = document.getElementById('tip').value;
+            const durum = document.getElementById('durum').value;
+            const gorsel = document.getElementById('gorsel').value.trim();
+            const hat = document.getElementById('hat').value.trim();
+            const alimTarihi = document.getElementById('alimTarihi').value;
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+
+            if (!seriNo || !idNo) {
+                alert("Seri No ve ID No alanları boş bırakılamaz!");
+                return;
+            }
+
+            // Eğer yeni ekleme yapılıyorsa ve Seri No zaten mevcutsa engelle
+            if (editIndex === -1 && sikiciListesi.some(s => String(s.seriNo).toLowerCase() === seriNo.toLowerCase())) {
+                alert("Bu Seri Numarasına sahip bir cihaz zaten listede var!");
+                return;
+            }
+
+            const logTarih = new Date().toISOString().split('T')[0];
+
+            if (editIndex === -1) {
+                // Yeni Cihaz Ekleme
+                const yeniCihaz = {
+                    seriNo, idNo, marka, model, tork, tip, durum, gorsel, hat, alimTarihi,
+                    logs: [{ tarih: logTarih, mesaj: "Cihaz envantere yeni kaydedildi." }]
+                };
+                sikiciListesi.push(yeniCihaz);
+            } else {
+                // Mevcut Cihazı Düzenleme
+                const eskiDurum = sikiciListesi[editIndex].durum;
+                sikiciListesi[editIndex].seriNo = seriNo;
+                sikiciListesi[editIndex].idNo = idNo;
+                sikiciListesi[editIndex].marka = marka;
+                sikiciListesi[editIndex].model = model;
+                sikiciListesi[editIndex].tork = tork;
+                sikiciListesi[editIndex].tip = tip;
+                sikiciListesi[editIndex].durum = durum;
+                sikiciListesi[editIndex].gorsel = gorsel;
+                sikiciListesi[editIndex].hat = hat;
+                sikiciListesi[editIndex].alimTarihi = alimTarihi;
+
+                if (eskiDurum !== durum) {
+                    if (!sikiciListesi[editIndex].logs) sikiciListesi[editIndex].logs = [];
+                    sikiciListesi[editIndex].logs.push({
+                        tarih: logTarih,
+                        mesaj: `Durum "${eskiDurum}" değerinden "${durum}" değerine güncellendi.`
+                    });
+                }
+            }
+
+            hafizayiGuncelle();
+            tabloyuGuncelle();
+            formuTemizle();
+        }
+
+        // Satırdaki verileri düzenlemek için forma yükler
+        function cihazDuzenle(index) {
+            const cihaz = sikiciListesi[index];
+            document.getElementById('seriNo').value = cihaz.seriNo;
+            document.getElementById('idNo').value = cihaz.idNo;
+            document.getElementById('marka').value = cihaz.marka || '';
+            document.getElementById('model').value = cihaz.model || '';
+            document.getElementById('tork').value = cihaz.tork || '';
+            document.getElementById('tip').value = cihaz.tip || 'Elektrikli';
+            document.getElementById('durum').value = cihaz.durum || 'Aktif';
+            document.getElementById('gorsel').value = cihaz.gorsel || '';
+            document.getElementById('hat').value = cihaz.hat || '';
+            document.getElementById('alimTarihi').value = cihaz.alimTarihi || '';
+            
+            document.getElementById('editIndex').value = index;
+            document.getElementById('formTitle').innerHTML = "📝 Cihaz Bilgilerini Düzenle";
+            document.getElementById('formTitle').style.color = "#ffc107";
+        }
+
+        // Cihazı listeden siler
+        function cihazSil(index) {
+            if (confirm("Bu sıkıcı cihazını envanterden silmek istediğinize emin misiniz?")) {
+                sikiciListesi.splice(index, 1);
+                hafizayiGuncelle();
+                tabloyuGuncelle();
+            }
+        }
+
+        // Form girdilerini sıfırlar
+        function formuTemizle() {
+            document.getElementById('seriNo').value = '';
+            document.getElementById('idNo').value = '';
+            document.getElementById('marka').value = '';
+            document.getElementById('model').value = '';
+            document.getElementById('tork').value = '';
+            document.getElementById('gorsel').value = '';
+            document.getElementById('hat').value = '';
+            document.getElementById('alimTarihi').value = '';
+            document.getElementById('editIndex').value = '-1';
+            
+            document.getElementById('formTitle').innerHTML = "🛠️ Yeni Sıkıcı Ekle";
+            document.getElementById('formTitle').style.color = "#28a745";
+        }
+
+        // Hafızayı komple sıfırlama işlevi
+        function hafizayiSifirla() {
+            if (confirm("Tüm envanter listesini temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
+                sikiciListesi = [];
+                localStorage.removeItem('sikiciListesiVerisi');
+                tabloyuGuncelle();
+            }
+        }
+
+        // Tabloyu güncel listeye göre HTML üzerinde yeniden oluşturur
+        function tabloyuGuncelle() {
+            const tbody = document.getElementById('kontrolTableBody');
+            tbody.innerHTML = '';
+
+            if (sikiciListesi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#888; padding:30px;">⚠️ Envanterde kayıtlı cihaz bulunmamaktadır.</td></tr>`;
+                return;
+            }
+
+            sikiciListesi.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                let imgHtml = item.gorsel ? `<img src="${item.gorsel}" class="img-preview" onerror="this.src='https://placeholder.com'">` : '<span>Yok</span>';
+                let dClass = String(item.durum).trim().toLowerCase() === "kalibrasyonda" ? "kalibrasyonda" : String(item.durum).trim().toLowerCase();
+
+                tr.innerHTML = `
+                    <td>${imgHtml}</td>
+                    <td style="font-weight:bold;">${item.seriNo}</td>
+                    <td>${item.idNo}</td>
+                    <td>${item.marka || '-'} - ${item.model || '-'}</td>
+                    <td>${item.tip || '-'}</td>
+                    <td><span class="status-badge status-${dClass}">${item.durum}</span></td>
+                    <td>
+                        <button class="btn-row btn-edit" onclick="cihazDuzenle(${index})">Düzenle</button>
+                        <button class="btn-row btn-delete" onclick="cihazSil(${index})">Sil</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Listeyi güncel haliyle bilgisayara bir JSON dosyası olarak indirir
+        function exportJSON() {
+            if (sikiciListesi.length === 0) {
+                alert("İndirmek için listede veri bulunmalıdır!");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sikiciListesi, null, 4));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "TurkTraktor_Sikici_Envanter_Listesi.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
         }
     </script>
 </body>
