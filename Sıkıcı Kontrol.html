@@ -24,6 +24,10 @@
         .form-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); width: 400px; flex-shrink: 0; max-height: 85vh; overflow-y: auto; }
         .table-box { flex-grow: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         
+        /* Dinamik Filtre Alanı */
+        .filter-wrapper { margin-bottom: 15px; display: flex; gap: 10px; align-items: center; }
+        .filter-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
         .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
@@ -176,13 +180,19 @@
 
         <!-- Sağ Taraf: Mevcut Sıkıcı Listesi Yönetimi -->
         <div class="table-box">
+            <!-- Dinamik Filtreleme Çubuğu -->
+            <div class="filter-wrapper">
+                <strong style="font-size: 14px;">🔍 Canlı Filtrele:</strong>
+                <input type="text" id="tabloFiltreGirdisi" class="filter-input" placeholder="Seri No, ID No, Marka, Model, Tip veya Durum yazarak anlık arayın..." onkeyup="tabloyuGuncelle()">
+            </div>
+
             <h3 style="margin-top:0; color:#333;">📦 Fabrika Cihaz Listesi Envanteri</h3>
             
-            <div class="table-responsive">
-                <table>
+            <div class="table-responsive" id="topluPdfBaskiAlani">
+                <table id="envanterTablosu">
                     <thead>
                         <tr>
-                            <th>Görsel</th> <th>Seri No</th> <th>ID No</th> <th>Marka - Model</th> <th>Tip</th> <th>Durum</th> <th>İşlemler</th>
+                            <th>Görsel</th> <th>Seri No</th> <th>ID No</th> <th>Marka - Model</th> <th>Tip</th> <th>Durum</th> <th class="no-print">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody id="kontrolTableBody">
@@ -194,6 +204,7 @@
             </div>
             
             <div class="json-actions">
+                <button class="btn-row" style="background-color: #6f42c1; padding:10px 15px;" onclick="topluPdfYazdir()">🖨️ Listeyi PDF Olarak İndir</button>
                 <button class="btn-row" style="background-color: #17a2b8; padding:10px 15px;" onclick="hafizayiSifirla()">🔄 Hafızayı Boşalt</button>
                 <button class="btn-row" style="background-color: #218838; padding:10px 15px;" onclick="exportJSON()">📥 Güncel JSON Olarak İndir</button>
             </div>
@@ -228,6 +239,10 @@
                     <div class="detail-item"><strong>Mevcut Durum:</strong> <span id="lblDurum"></span></div>
                     <div class="detail-item"><strong>Teslim Alınma Tarihi:</strong> <span id="lblTeslimTarihi"></span></div>
                     <div class="detail-item"><strong>Envanter Alım Tarihi:</strong> <span id="lblAlimTarihi"></span></div>
+                    <!-- Yaşlanma Günü Alanı -->
+                    <div class="detail-item" style="grid-column: span 2; background-color: #e9ecef; padding: 6px; border-radius: 4px; font-weight: bold; margin-top: 5px;">
+                        📅 Cihaz Yaşlanma Süresi: <span id="lblYaslanmaGunu" style="color:#dc3545;">-</span>
+                    </div>
                 </div>
 
                 <div style="margin-bottom:15px; font-size:14px;">
@@ -263,6 +278,7 @@
 
     <script>
         let sikiciListesi = [];
+        const SABIT_SIFRE = "1234"; // Düzenleme, ekleme ve silme için geçerli şifre
 
         window.onload = function() {
             const kayitliVeri = localStorage.getItem('sikiciListesiVerisi');
@@ -275,6 +291,21 @@
                 }
             }
         };
+
+        // Tek seferlik yetki kontrolü sağlayan güvenlik fonksiyonu
+        function yetkiKontrolEt() {
+            if (sessionStorage.getItem('sikiciGirisIzni') === 'true') {
+                return true;
+            }
+            const girilenSifre = prompt("Bu işlem için lütfen yetkili şifresini giriniz:");
+            if (girilenSifre === SABIT_SIFRE) {
+                sessionStorage.setItem('sikiciGirisIzni', 'true');
+                return true;
+            } else {
+                alert("Hatalı şifre girdiniz! İşlem iptal edildi.");
+                return false;
+            }
+        }
 
         function hafizayiGuncelle() {
             localStorage.setItem('sikiciListesiVerisi', JSON.stringify(sikiciListesi));
@@ -300,6 +331,8 @@
         }
 
         function kaydet() {
+            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+
             const seriNo = document.getElementById('seriNo').value.trim();
             const idNo = document.getElementById('idNo').value.trim();
             const marka = document.getElementById('marka').value.trim();
@@ -377,7 +410,7 @@
             formuTemizle();
         }
 
-        // Detay Penceresini Açma Fonksiyonu
+        // Detay Penceresini Açma ve Yaşlanma Hesaplama Fonksiyonu
         function detayGoster(index) {
             const cihaz = sikiciListesi[index];
             
@@ -396,7 +429,17 @@
             document.getElementById('lblKokNeden').innerText = cihaz.kokNeden || '-';
             document.getElementById('lblAciklama').innerText = cihaz.aciklama || '-';
 
-            // Modal Resim Alanı Yönetimi
+            // Dinamik Yaşlanma Gün Hesabı
+            if (cihaz.alimTarihi) {
+                const alimD = new Date(cihaz.alimTarihi);
+                const bugunD = new Date();
+                const farkZaman = bugunD - alimD;
+                const farkGun = Math.floor(farkZaman / (1000 * 60 * 60 * 24));
+                document.getElementById('lblYaslanmaGunu').innerText = farkGun >= 0 ? `${farkGun} Gündür Envanterde` : "İleri Tarihli Kayıt";
+            } else {
+                document.getElementById('lblYaslanmaGunu').innerText = "Alım Tarihi Girilmemiş";
+            }
+
             const resimAlani = document.getElementById('modalResimAlani');
             if(cihaz.gorsel) {
                 resimAlani.innerHTML = `<img src="${cihaz.gorsel}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ddd;">`;
@@ -404,7 +447,6 @@
                 resimAlani.innerHTML = '';
             }
 
-            // Log Tablosunu Oluşturma
             const logTbody = document.getElementById('modalLogTableBody');
             logTbody.innerHTML = '';
             if (cihaz.logs && cihaz.logs.length > 0) {
@@ -423,7 +465,6 @@
             document.getElementById('detayModal').style.display = 'none';
         }
 
-        // Açılan Detay Kartını PDF Olarak İndirme
         function pdfIndir() {
             const element = document.getElementById('pdfBaskiAlani');
             const seriNo = document.getElementById('lblSeriNo').innerText;
@@ -437,7 +478,31 @@
             html2pdf().set(opsiyonlar).from(element).save();
         }
 
+        // Tüm Tabloyu Toplu Halde PDF Olarak Çıkartma
+        function topluPdfYazdir() {
+            const element = document.getElementById('topluPdfBaskiAlani');
+            
+            // Baskıda işlem butonlarını gizlemek için stil ekliyoruz
+            const stil = document.createElement('style');
+            stil.innerHTML = '.no-print { display: none !important; }';
+            element.appendChild(stil);
+
+            const opsiyonlar = {
+                margin:       8,
+                filename:     `TurkTraktor_Sikici_Envanter_Listesi.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // Tablo genişliği için yatay mod
+            };
+            
+            html2pdf().set(opsiyonlar).from(element).save().then(() => {
+                stil.remove(); // İşlem bitince stili siliyoruz
+            });
+        }
+
         function cihazDuzenle(index) {
+            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+
             const cihaz = sikiciListesi[index];
             document.getElementById('seriNo').value = cihaz.seriNo;
             document.getElementById('idNo').value = cihaz.idNo;
@@ -462,6 +527,8 @@
         }
 
         function cihazSil(index) {
+            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+
             if (confirm("Bu sıkıcı cihazını envanterden silmek istediğinize emin misiniz?")) {
                 sikiciListesi.splice(index, 1);
                 hafizayiGuncelle();
@@ -491,6 +558,8 @@
         }
 
         function hafizayiSifirla() {
+            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+
             if (confirm("Tüm envanter listesini temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
                 sikiciListesi = [];
                 localStorage.removeItem('sikiciListesiVerisi');
@@ -498,16 +567,28 @@
             }
         }
 
+        // Dinamik Filtreleme Kuralları Dahil Edilmiş Tablo Güncelleme Fonksiyonu
         function tabloyuGuncelle() {
             const tbody = document.getElementById('kontrolTableBody');
             tbody.innerHTML = '';
+
+            const filtreDegeri = document.getElementById('tabloFiltreGirdisi').value.toLowerCase().trim();
 
             if (sikiciListesi.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" style="color:#888; padding:30px;">⚠️ Envanterde kayıtlı cihaz bulunmamaktadır.</td></tr>`;
                 return;
             }
 
+            let gorunurSatirSayisi = 0;
+
             sikiciListesi.forEach((item, index) => {
+                // Filtre Eşleşme Kontrolü
+                const aramaMetni = `${item.seriNo} ${item.idNo} ${item.marka || ''} ${item.model || ''} ${item.tip || ''} ${item.durum}`.toLowerCase();
+                if (filtreDegeri !== '' && !aramaMetni.includes(filtreDegeri)) {
+                    return; // Filtreye uymuyorsa bu cihazı atla
+                }
+
+                gorunurSatirSayisi++;
                 const tr = document.createElement('tr');
                 let imgHtml = item.gorsel ? `<img src="${item.gorsel}" class="img-preview" onerror="this.src='https://placeholder.com'">` : '<span>Yok</span>';
                 let dClass = String(item.durum).trim().toLowerCase() === "kalibrasyonda" ? "kalibrasyonda" : String(item.durum).trim().toLowerCase();
@@ -519,13 +600,17 @@
                     <td>${item.marka || '-'} - ${item.model || '-'}</td>
                     <td>${item.tip || '-'}</td>
                     <td><span class="status-badge status-${dClass}">${item.durum}</span></td>
-                    <td>
+                    <td class="no-print">
                         <button class="btn-row btn-edit" onclick="cihazDuzenle(${index})">Düzenle</button>
                         <button class="btn-row btn-delete" onclick="cihazSil(${index})">Sil</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            if (gorunurSatirSayisi === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#888; padding:30px;">🔍 Aradığınız kriterlere uygun cihaz bulunamadı.</td></tr>`;
+            }
         }
 
         function exportJSON() {
@@ -542,7 +627,6 @@
             downloadAnchor.remove();
         }
 
-        // Modal dışına tıklanırsa kapatma desteği
         window.onclick = function(event) {
             const modal = document.getElementById('detayModal');
             if (event.target == modal) {
