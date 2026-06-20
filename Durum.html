@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sıkıcı Durum Analiz Paneli</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { margin: 20px; background-color: #f5f7fa; color: #333; }
+        
+        .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 3px solid #0056b3; padding-bottom: 15px; }
+        h1 { color: #0056b3; margin: 0; font-size: 24px; }
+        h2 { color: #333; font-size: 18px; margin: 25px 0 15px 0; border-left: 5px solid #0056b3; padding-left: 10px; }
+        
+        /* Dosya Yükleme Alanı */
+        .file-input-wrapper { background-color: #e9ecef; padding: 10px 15px; border-radius: 4px; border: 2px dashed #0056b3; font-size: 14px; font-weight: bold; }
+        
+        /* Durum Grafik Kartları Alanı */
+        .chart-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; }
+        .chart-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-bottom: 5px solid #ccc; }
+        .chart-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .chart-card.active-filter { transform: translateY(-3px); box-shadow: 0 0 0 3px #0056b3; }
+        
+        /* Kart Renkleri */
+        .card-aktif { border-bottom-color: #28a745; }
+        .card-arizali { border-bottom-color: #dc3545; }
+        .card-yedek { border-bottom-color: #ffc107; }
+        .card-kalibrasyon { border-bottom-color: #17a2b8; }
+        
+        .chart-card h3 { margin: 0 0 10px 0; font-size: 15px; color: #666; text-transform: uppercase; }
+        .chart-card .count { font-size: 32px; font-weight: bold; color: #222; margin-bottom: 10px; }
+        
+        /* Marka Model Detay Paneli Grafik Yapısı */
+        .model-chart-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; }
+        .model-chart-row { display: grid; grid-template-columns: 250px 1fr 80px; align-items: center; gap: 15px; padding: 8px; border-radius: 4px; cursor: pointer; transition: background 0.2s; }
+        .model-chart-row:hover { background-color: #f1f5f9; }
+        .model-chart-row.active-filter { background-color: #e2e8f0; box-shadow: inset 3px 0 0 #0056b3; }
+        .model-label { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+        
+        /* Görsel Grafik Çubuğu Tasarımı */
+        .bar-bg { background-color: #e9ecef; width: 100%; height: 10px; border-radius: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 0%; transition: width 0.5s ease-out; }
+        .fill-aktif { background-color: #28a745; }
+        .fill-arizali { background-color: #dc3545; }
+        .fill-yedek { background-color: #ffc107; }
+        .fill-kalibrasyon { background-color: #17a2b8; }
+        .fill-model { background-color: #007bff; }
+        /* Filtre Bilgi Çubuğu */
+        .filter-info { background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-weight: bold; display: none; text-align: center; font-size: 14px; border: 1px solid #bae6fd; }
+        .clear-filter-btn { background: #0284c7; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-left: 12px; font-size: 12px; font-weight: bold; }
+        .clear-filter-btn:hover { background: #0369a1; }
+
+        /* Tablo Tasarımı */
+        .table-responsive { overflow-x: auto; background-color: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th, td { padding: 12px; border: 1px solid #dee2e6; font-size: 14px; text-align: center; vertical-align: middle; }
+        th { background-color: #f8f9fa; color: #495057; font-weight: bold; }
+        tbody tr { cursor: pointer; transition: background 0.2s; }
+        tbody tr:hover { background-color: #f1f5f9; }
+        .img-preview { max-width: 50px; max-height: 50px; object-fit: cover; border-radius: 4px; }
+        
+        /* Durum Etiketleri */
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; display: inline-block; width: 110px; text-align: center; text-transform: uppercase; }
+        .status-aktif { background-color: #28a745; }
+        .status-arızalı { background-color: #dc3545; }
+        .status-yedek { background-color: #ffc107; color: #212529; }
+        .status-kalibrasyonda { background-color: #17a2b8; }
+
+        /* Modal (Açılır Detay Penceresi) Tasarımı */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background-color: white; padding: 25px; border-radius: 8px; width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .modal-header h2 { margin: 0; font-size: 20px; color: #333; }
+        .close { font-size: 28px; font-weight: bold; cursor: pointer; color: #aaa; }
+        .close:hover { color: black; }
+
+        /* Detay Listesi Tasarımı */
+        .detail-list { list-style: none; padding: 0; margin: 0; text-align: left; }
+        .detail-list li { padding: 10px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 14px; }
+        .detail-list li strong { color: #555; }
+        .detail-list li span { color: #000; font-weight: 500; text-align: right; max-width: 60%; }
+        .form-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-action { color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+
+        /* Log Raporu Alanı */
+        .log-box { display: none; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px; margin-top: 15px; text-align: left; max-height: 200px; overflow-y: auto; }
+        .log-item { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #ccc; color: #555; }
+        .log-item strong { color: #212529; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #detailModalBody, #detailModalBody * { visibility: visible; }
+            #detailModalBody { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; }
+            .modal, .modal-content { position: absolute; background: white; width: 100%; height: auto; display: block !important; box-shadow: none; overflow: visible; }
+            .form-actions, .close, .header-container, .log-box, #logToggleBtn, h2, .chart-container, .model-chart-box { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>📊 TÜRKTRAKTÖR ERENLER FABRİKASI - DURUM VE GRAFİK PANELİ</h1>
+        <div class="file-input-wrapper">
+            <label for="jsonFileInput" style="cursor:pointer;">📂 Listeyi Yüklemek İçin JSON Dosyası Seçin: </label>
+            <input type="file" id="jsonFileInput" accept=".json" onchange="loadJSON(this)">
+        </div>
+    </div>
+    <h2>1. Genel Durum Dağılım Grafikleri (Filtrelemek için Tıklayın)</h2>
+    <div class="chart-container">
+        <div class="chart-card card-aktif" id="cardAktif" onclick="filterTable('durum', 'Aktif')">
+            <h3>Aktif Sıkıcılar</h3> <div class="count" id="countAktif">0</div>
+            <div class="bar-bg"><div class="bar-fill fill-aktif" id="barAktif"></div></div>
+        </div>
+        <div class="chart-card card-arizali" id="cardArizali" onclick="filterTable('durum', 'Arızalı')">
+            <h3>Arızalı Sıkıcılar</h3> <div class="count" id="countArizali">0</div>
+            <div class="bar-bg"><div class="bar-fill fill-arizali" id="barArizali"></div></div>
+        </div>
+        <div class="chart-card card-yedek" id="cardYedek" onclick="filterTable('durum', 'Yedek')">
+            <h3>Yedek Sıkıcılar</h3> <div class="count" id="countYedek">0</div>
+            <div class="bar-bg"><div class="bar-fill fill-yedek" id="barYedek"></div></div>
+        </div>
+        <div class="chart-card card-kalibrasyon" id="cardKalibrasyon" onclick="filterTable('durum', 'Kalibrasyonda')">
+            <h3>Kalibrasyonda</h3> <div class="count" id="countKalibrasyon">0</div>
+            <div class="bar-bg"><div class="bar-fill fill-kalibrasyon" id="barKalibrasyon"></div></div>
+        </div>
+    </div>
+
+    <h2>2. Marka & Model Dağılım Oranları (Filtrelemek için Tıklayın)</h2>
+    <div class="model-chart-box" id="modelChartContainer">
+        <div style="color: #888; text-align: center; padding: 15px; font-weight: 500;">
+            JSON dosyası yüklendiğinde marka ve model adetleri burada grafik çubuğu olarak listelenecektir.
+        </div>
+    </div>
+
+    <h2>3. Sıkıcı Veri Detay Listesi (Tıklayınca Detay Penceresi Açılır)</h2>
+    <div id="filterInfoBar" class="filter-info">
+        Şu anda sadece <span id="currentFilterText">...</span> koşuluna uyan cihazlar listeleniyor.
+        <button class="clear-filter-btn" onclick="clearFilter()">Filtreyi Temizle (Tümünü Göster)</button>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Görsel</th> <th>Seri No</th> <th>ID No</th> <th>Model</th> <th>Marka</th> <th>Tork Aralığı</th> <th>Tip</th> <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody id="sikiciTableBody">
+                <tr>
+                    <td colspan="8" style="color: #888; padding: 30px; font-weight: 500;">
+                        ⚠️ Analiz raporları ve cihazları listelemek için lütfen yukarıdan fabrika JSON dosyanızı yükleyin.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tıklayınca Açılan Ortak Detay Modalı -->
+    <div id="detailModal" class="modal" onclick="closeDetailModalExternally(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔍 Sıkıcı Detay Bilgileri</h2>
+                <span class="close" onclick="closeDetailModal()">&times;</span>
+            </div>
+            <div id="detailModalBody"></div>
+            <div id="logBox" class="log-box"></div>
+            <div class="form-actions">
+                <button type="button" class="btn-action" style="background-color: #ffc107; color: black;" id="logToggleBtn" onclick="toggleLogBox()">📜 Log Raporu Göster</button>
+                <button type="button" class="btn-action" style="background-color: #28a745;" id="pdfBtn">📄 PDF Olarak Kaydet</button>
+                <button type="button" class="btn-action" style="background-color: #007bff;" onclick="closeDetailModal()">Kapat</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        let sikiciListesi = [];
+        let filtreTipi = "Tümü";
+        let filtreDegeri = "Tümü";
+
+        function loadJSON(input) {
+            if (!input.files || input.files.length === 0) return;
+            const dosyaBilgisi = input.files[0]; 
+            const okuyucu = new FileReader();
+            
+            okuyucu.onload = function(e) {
+                try {
+                    const temizlenmisVeri = JSON.parse(e.target.result.trim());
+                    if (Array.isArray(temizlenmisVeri)) { 
+                        sikiciListesi = temizlenmisVeri; 
+                        clearFilter();
+                    } else { alert("Hata: Geçersiz şablon dizisi!"); }
+                } catch (error) { alert("Hata: JSON dosyası çözümlenemedi!"); }
+                input.value = '';
+            };
+            okuyucu.readAsText(dosyaBilgisi, "UTF-8");
+        }
+
+        function genelGrafikleriGuncelle() {
+            let sayac = { Aktif: 0, Arızalı: 0, Yedek: 0, Kalibrasyonda: 0 };
+            let toplam = sikiciListesi.length;
+
+            sikiciListesi.forEach(item => {
+                let d = String(item.durum).trim().toLowerCase();
+                if(d === "aktif") sayac.Aktif++;
+                if(d === "arızalı" || d === "arizali") sayac.Arızalı++;
+                if(d === "yedek") sayac.Yedek++;
+                if(d === "kalibrasyonda") sayac.Kalibrasyonda++;
+            });
+
+            document.getElementById('countAktif').innerHTML = sayac.Aktif;
+            document.getElementById('countArizali').innerHTML = sayac.Arızalı;
+            document.getElementById('countYedek').innerHTML = sayac.Yedek;
+            document.getElementById('countKalibrasyon').innerHTML = sayac.Kalibrasyonda;
+
+            if (toplam > 0) {
+                document.getElementById('barAktif').style.width = `${(sayac.Aktif / toplam) * 100}%`;
+                document.getElementById('barArizali').style.width = `${(sayac.Arızalı / toplam) * 100}%`;
+                document.getElementById('barYedek').style.width = `${(sayac.Yedek / toplam) * 100}%`;
+                document.getElementById('barKalibrasyon').style.width = `${(sayac.Kalibrasyonda / toplam) * 100}%`;
+            } else {
+                document.querySelectorAll('.bar-fill').forEach(bar => bar.style.width = '0%');
+            }
+        }
+
+        function markaModelGrafikleriniOlustur() {
+            const container = document.getElementById('modelChartContainer');
+            container.innerHTML = '';
+            if(sikiciListesi.length === 0) return;
+
+            let modelMatris = {}; let enYuksekAdet = 0;
+            sikiciListesi.forEach(item => {
+                const anahtar = `${(item.marka || 'Bilinmeyen').trim()} - ${(item.model || 'Bilinmeyen').trim()}`;
+                if (!modelMatris[anahtar]) modelMatris[anahtar] = 0;
+                modelMatris[anahtar]++;
+                if(modelMatris[anahtar] > enYuksekAdet) enYuksekAdet = modelMatris[anahtar];
+            });
+
+            Object.keys(modelMatris).forEach(key => {
+                const adet = modelMatris[key];
+                const yuzdeOrani = enYuksekAdet > 0 ? (adet / enYuksekAdet) * 100 : 0;
+                const row = document.createElement('div');
+                row.className = 'model-chart-row';
+                if(filtreTipi === 'model' && filtreDegeri.toLowerCase() === key.toLowerCase()) row.classList.add('active-filter');
+                
+                row.setAttribute('onclick', `filterTable('model', '${key}')`);
+                row.innerHTML = `
+                    <div class="model-label" title="${key}">📂 ${key}</div>
+                    <div class="bar-bg"><div class="bar-fill fill-model" style="width: ${yuzdeOrani}%"></div></div>
+                    <div style="font-weight: bold; font-size: 13px; text-align: right;">${adet} Adet</div>
+                `;
+                container.appendChild(row);
+            });
+        }
+        function yaslanmaHesapla(alimTarihiStr) {
+            if (!alimTarihiStr) return "-";
+            const alimTarihi = new Date(alimTarihiStr);
+            if (isNaN(alimTarihi.getTime())) return "-";
+            const farkGun = Math.floor((new Date().getTime() - alimTarihi.getTime()) / (1000 * 60 * 60 * 24));
+            return farkGun >= 0 ? `${farkGun} Gün` : "0 Gün";
+        }
+
+        // Tıklayınca Detayları Açan Fonksiyon
+        function showDetails(seriNo) {
+            const item = sikiciListesi.find(s => String(s.seriNo).trim() === String(seriNo).trim());
+            if (!item) return;
+
+            const body = document.getElementById('detailModalBody');
+            document.getElementById('logBox').style.display = 'none';
+            document.getElementById('logToggleBtn').innerHTML = "📜 Log Raporu Göster";
+
+            let imgHtml = item.gorsel ? `<div style="text-align:center; margin-bottom:15px;"><img src="${item.gorsel}" style="max-width:180px; max-height:180px; border-radius:8px;" onerror="this.src='https://placeholder.com'"></div>` : '';
+            const dinamikYaslanma = yaslanmaHesapla(item.alimTarihi);
+
+            body.innerHTML = `
+                ${imgHtml}
+                <ul class="detail-list">
+                    <li><strong>Seri No:</strong> <span>${item.seriNo}</span></li> <li><strong>ID No:</strong> <span>${item.idNo}</span></li>
+                    <li><strong>Model:</strong> <span>${item.model}</span></li> <li><strong>Marka:</strong> <span>${item.marka}</span></li>
+                    <li><strong>Tork Aralığı (Min-Max):</strong> <span>${item.tork}</span></li> <li><strong>Tip:</strong> <span>${item.tip}</span></li>
+                    <li><strong>Hat:</strong> <span>${item.hat || '-'}</span></li> <li><strong>İstasyon-AGP:</strong> <span>${item.istasyon || '-'}</span></li>
+                    <li><strong>Operasyon Alan Sorumlusu:</strong> <span>${item.sorumlu || '-'}</span></li> <li><strong>Kalibrasyon Tarihi:</strong> <span>${item.kalibrasyon || '-'}</span></li>
+                    <li><strong>Durum:</strong> <span>${item.durum}</span></li> <li><strong>Arızalı Kök Neden:</strong> <span>${item.kokNeden || '-'}</span></li>
+                    <li><strong>Açıklama:</strong> <span>${item.aciklama || '-'}</span></li> <li><strong>Teslim Alındığı Tarih:</strong> <span>${item.teslimTarihi || '-'}</span></li>
+                    <li><strong>Alım Tarihi:</strong> <span>${item.alimTarihi || '-'}</span></li>
+                    <li style="background-color: #f8f9fa; font-weight: bold;"><strong>Yaşlanma Süresi:</strong> <span style="color: #0056b3;">${dinamikYaslanma}</span></li>
+                </ul>
+            `;
+            
+            // Log Raporu İçeriğini Doldurma
+            const logBox = document.getElementById('logBox'); logBox.innerHTML = '';
+            if (item.logs && item.logs.length > 0) {
+                item.logs.forEach(log => { logBox.innerHTML += `<div class="log-item">📅 <strong>${log.tarih}:</strong> ${log.mesaj}</div>`; });
+            } else { logBox.innerHTML = '<div class="log-item" style="text-align:center; color:#999;">Değişiklik kaydı bulunmuyor.</div>'; }
+
+            // PDF Butonu Tetikleyicisi
+            document.getElementById('pdfBtn').onclick = function() {
+                const eskiBaslik = document.title; document.title = String(item.seriNo).trim();
+                window.print(); document.title = eskiBaslik;
+            };
+
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function closeDetailModal() { document.getElementById('detailModal').style.display = 'none'; }
+        function closeDetailModalExternally(e) { if(e.target.id === 'detailModal') closeDetailModal(); }
+        function toggleLogBox() {
+            const logBox = document.getElementById('logBox'); const btn = document.getElementById('logToggleBtn');
+            if (logBox.style.display === 'block') { logBox.style.display = 'none'; btn.innerHTML = "📜 Log Raporu Göster"; } 
+            else { logBox.style.display = 'block'; btn.innerHTML = "🙈 Log Raporu Gizle"; }
+        }
+
+        function filterTable(tip, deger) {
+            if (sikiciListesi.length === 0) return;
+            filtreTipi = tip; filtreDegeri = deger;
+            document.querySelectorAll('.chart-card').forEach(card => card.classList.remove('active-filter'));
+            if(tip === 'durum') {
+                let d = deger.toLowerCase();
+                if(d === 'aktif') document.getElementById('cardAktif').classList.add('active-filter');
+                if(d === 'arızalı') document.getElementById('cardArizali').classList.add('active-filter');
+                if(d === 'yedek') document.getElementById('cardYedek').classList.add('active-filter');
+                if(d === 'kalibrasyonda') document.getElementById('cardKalibrasyon').classList.add('active-filter');
+            }
+            markaModelGrafikleriniOlustur();
+            document.getElementById('currentFilterText').innerHTML = `"${deger.toUpperCase()}"`;
+            document.getElementById('filterInfoBar').style.display = 'block';
+            tabloyuYazdir();
+        }
+
+        function clearFilter() {
+            filtreTipi = "Tümü"; filtreDegeri = "Tümü";
+            document.querySelectorAll('.chart-card').forEach(card => card.classList.remove('active-filter'));
+            document.getElementById('filterInfoBar').style.display = 'none';
+            genelGrafikleriGuncelle(); markaModelGrafikleriniOlustur(); tabloyuYazdir();
+        }
+
+        function tabloyuYazdir() {
+            const tbody = document.getElementById('sikiciTableBody'); tbody.innerHTML = '';
+
+            let filtrelenmisDizi = sikiciListesi.filter(item => {
+                if (filtreTipi === "Tümü") return true;
+                if (filtreTipi === "durum") return String(item.durum).trim().toLowerCase() === String(filtreDegeri).trim().toLowerCase();
+                if (filtreTipi === "model") return `${(item.marka||'').trim()} - ${(item.model||'').trim()}`.toLowerCase() === filtreDegeri.toLowerCase();
+                return true;
+            });
+
+            if (filtrelenmisDizi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="padding:20px; color:#999;">Cihaz bulunamadı.</td></tr>`; return;
+            }
+
+            filtrelenmisDizi.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.setAttribute("onclick", `showDetails('${item.seriNo}')`);
+                let imgHtml = item.gorsel ? `<img src="${item.gorsel}" class="img-preview" onerror="this.src='https://placeholder.com'">` : '<span>Yok</span>';
+                let dClass = String(item.durum).trim().toLowerCase() === "kalibrasyonda" ? "kalibrasyonda" : String(item.durum).trim().toLowerCase();
+
+                tr.innerHTML = `
+                    <td>${imgHtml}</td> <td style="font-weight:bold;">${item.seriNo}</td> <td>${item.idNo}</td> <td>${item.model}</td> <td>${item.marka}</td> <td>${item.tork}</td> <td>${item.tip}</td>
+                    <td><span class="status-badge status-${dClass}">${item.durum}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
