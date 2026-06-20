@@ -12,13 +12,14 @@
         h1 { color: #0056b3; margin: 0; font-size: 24px; }
         h2 { color: #333; font-size: 18px; margin: 25px 0 15px 0; border-left: 5px solid #0056b3; padding-left: 10px; }
         
-        /* Dosya Yükleme Alanı */
-        .file-input-wrapper { background-color: #e9ecef; padding: 10px 15px; border-radius: 4px; border: 2px dashed #0056b3; font-size: 14px; font-weight: bold; }
+        /* Geri Dönüş Buton Alanı */
+        .btn-nav { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .btn-nav:hover { background-color: #0056b3; }
         
         /* Durum Grafik Kartları Alanı */
         .chart-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px; }
         .chart-card { background: white; border-radius: 8px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-bottom: 5px solid #ccc; }
-        .chart-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        .chart-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15 rgba(0,0,0,0.1); }
         .chart-card.active-filter { transform: translateY(-3px); box-shadow: 0 0 0 3px #0056b3; }
         
         /* Kart Renkleri */
@@ -45,6 +46,7 @@
         .fill-yedek { background-color: #ffc107; }
         .fill-kalibrasyon { background-color: #17a2b8; }
         .fill-model { background-color: #007bff; }
+        
         /* Filtre Bilgi Çubuğu */
         .filter-info { background-color: #e0f2fe; color: #0369a1; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-weight: bold; display: none; text-align: center; font-size: 14px; border: 1px solid #bae6fd; }
         .clear-filter-btn { background: #0284c7; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; margin-left: 12px; font-size: 12px; font-weight: bold; }
@@ -66,7 +68,7 @@
         .status-yedek { background-color: #ffc107; color: #212529; }
         .status-kalibrasyonda { background-color: #17a2b8; }
 
-        /* Modal (Açılır Detay Penceresi) Tasarımı */
+        /* Modal Tasarımı */
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
         .modal-content { background-color: white; padding: 25px; border-radius: 8px; width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -100,11 +102,9 @@
 
     <div class="header-container">
         <h1>📊 TÜRKTRAKTÖR ERENLER FABRİKASI - DURUM VE GRAFİK PANELİ</h1>
-        <div class="file-input-wrapper">
-            <label for="jsonFileInput" style="cursor:pointer;">📂 Listeyi Yüklemek İçin JSON Dosyası Seçin: </label>
-            <input type="file" id="jsonFileInput" accept=".json" onchange="loadJSON(this)">
-        </div>
+        <button class="btn-nav" onclick="window.location.href='Sıkıcı Kontrol.html'">📋 Sıkıcı Kontrol Listesine Dön</button>
     </div>
+    
     <h2>1. Genel Durum Dağılım Grafikleri (Filtrelemek için Tıklayın)</h2>
     <div class="chart-container">
         <div class="chart-card card-aktif" id="cardAktif" onclick="filterTable('durum', 'Aktif')">
@@ -128,7 +128,7 @@
     <h2>2. Marka & Model Dağılım Oranları (Filtrelemek için Tıklayın)</h2>
     <div class="model-chart-box" id="modelChartContainer">
         <div style="color: #888; text-align: center; padding: 15px; font-weight: 500;">
-            JSON dosyası yüklendiğinde marka ve model adetleri burada grafik çubuğu olarak listelenecektir.
+            Cihazlar yükleniyor...
         </div>
     </div>
 
@@ -148,14 +148,13 @@
             <tbody id="sikiciTableBody">
                 <tr>
                     <td colspan="8" style="color: #888; padding: 30px; font-weight: 500;">
-                        ⚠️ Analiz raporları ve cihazları listelemek için lütfen yukarıdan fabrika JSON dosyanızı yükleyin.
+                        ⚠️ Sıkıcı kontrol listesinden herhangi bir veri yüklenmedi.
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Tıklayınca Açılan Ortak Detay Modalı -->
     <div id="detailModal" class="modal" onclick="closeDetailModalExternally(event)">
         <div class="modal-content">
             <div class="modal-header">
@@ -171,28 +170,29 @@
             </div>
         </div>
     </div>
+
     <script>
         let sikiciListesi = [];
         let filtreTipi = "Tümü";
         let filtreDegeri = "Tümü";
 
-        function loadJSON(input) {
-            if (!input.files || input.files.length === 0) return;
-            const dosyaBilgisi = input.files[0]; 
-            const okuyucu = new FileReader();
-            
-            okuyucu.onload = function(e) {
+        // Sayfa yüklendiğinde otomatik olarak localStorage verisini kontrol et
+        window.onload = function() {
+            const kayıtlıVeri = localStorage.getItem('sikiciListesiVerisi');
+            if (kayıtlıVeri) {
                 try {
-                    const temizlenmisVeri = JSON.parse(e.target.result.trim());
-                    if (Array.isArray(temizlenmisVeri)) { 
-                        sikiciListesi = temizlenmisVeri; 
-                        clearFilter();
-                    } else { alert("Hata: Geçersiz şablon dizisi!"); }
-                } catch (error) { alert("Hata: JSON dosyası çözümlenemedi!"); }
-                input.value = '';
-            };
-            okuyucu.readAsText(dosyaBilgisi, "UTF-8");
-        }
+                    sikiciListesi = JSON.parse(kayıtlıVeri);
+                    clearFilter();
+                } catch(e) {
+                    console.error("Hafızadaki JSON verisi okunamadı.", e);
+                }
+            } else {
+                document.getElementById('modelChartContainer').innerHTML = `
+                    <div style="color: #dc3545; text-align: center; padding: 15px; font-weight: bold;">
+                        ⚠️ Henüz Sıkıcı Kontrol sayfasından JSON verisi yüklenmemiş!
+                    </div>`;
+            }
+        };
 
         function genelGrafikleriGuncelle() {
             let sayac = { Aktif: 0, Arızalı: 0, Yedek: 0, Kalibrasyonda: 0 };
@@ -250,6 +250,7 @@
                 container.appendChild(row);
             });
         }
+
         function yaslanmaHesapla(alimTarihiStr) {
             if (!alimTarihiStr) return "-";
             const alimTarihi = new Date(alimTarihiStr);
@@ -258,7 +259,6 @@
             return farkGun >= 0 ? `${farkGun} Gün` : "0 Gün";
         }
 
-        // Tıklayınca Detayları Açan Fonksiyon
         function showDetails(seriNo) {
             const item = sikiciListesi.find(s => String(s.seriNo).trim() === String(seriNo).trim());
             if (!item) return;
@@ -285,13 +285,11 @@
                 </ul>
             `;
             
-            // Log Raporu İçeriğini Doldurma
             const logBox = document.getElementById('logBox'); logBox.innerHTML = '';
             if (item.logs && item.logs.length > 0) {
                 item.logs.forEach(log => { logBox.innerHTML += `<div class="log-item">📅 <strong>${log.tarih}:</strong> ${log.mesaj}</div>`; });
             } else { logBox.innerHTML = '<div class="log-item" style="text-align:center; color:#999;">Değişiklik kaydı bulunmuyor.</div>'; }
 
-            // PDF Butonu Tetikleyicisi
             document.getElementById('pdfBtn').onclick = function() {
                 const eskiBaslik = document.title; document.title = String(item.seriNo).trim();
                 window.print(); document.title = eskiBaslik;
@@ -302,6 +300,7 @@
 
         function closeDetailModal() { document.getElementById('detailModal').style.display = 'none'; }
         function closeDetailModalExternally(e) { if(e.target.id === 'detailModal') closeDetailModal(); }
+        
         function toggleLogBox() {
             const logBox = document.getElementById('logBox'); const btn = document.getElementById('logToggleBtn');
             if (logBox.style.display === 'block') { logBox.style.display = 'none'; btn.innerHTML = "📜 Log Raporu Göster"; } 
