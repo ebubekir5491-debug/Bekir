@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sıkıcı Kontrol Paneli</title>
+    <!-- PDF Çıktısı Alabilmek İçin Gerekli Kütüphane -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { margin: 20px; background-color: #f5f7fa; color: #333; }
         
         .header-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 3px solid #28a745; padding-bottom: 15px; }
         h1 { color: #28a745; margin: 0; font-size: 24px; }
-        h2 { color: #333; font-size: 18px; margin: 25px 0 15px 0; border-left: 5px solid #28a745; padding-left: 10px; }
         
         /* Navigasyon ve Dosya Alanı */
         .actions-wrapper { display: flex; gap: 15px; align-items: center; }
@@ -40,6 +41,8 @@
         th { background-color: #f8f9fa; color: #495057; font-weight: bold; position: sticky; top: 0; z-index: 10; }
         tbody tr:hover { background-color: #f1f5f9; }
         
+        .clickable-cell { color: #007bff; cursor: pointer; font-weight: bold; text-decoration: underline; }
+        .clickable-cell:hover { color: #0056b3; }
         .img-preview { max-width: 40px; max-height: 40px; object-fit: cover; border-radius: 4px; }
         
         /* Durum Etiketleri */
@@ -54,6 +57,24 @@
         .btn-delete { background-color: #dc3545; }
         
         .json-actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
+
+        /* MODAL (DETAY PENCERESİ) TASARIMI */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: white; padding: 25px; border-radius: 8px; width: 700px; max-height: 90vh; overflow-y: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #aaa; }
+        .close-btn:hover { color: black; }
+        
+        /* Detay Rapor Şablon Alanı */
+        .pdf-header { border-bottom: 2px solid #28a745; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .detail-item { font-size: 14px; line-height: 1.5; }
+        .detail-item strong { color: #555; }
+        
+        /* Log Bölümü Tasarımı */
+        .log-section { margin-top: 20px; border-top: 1px solid #dee2e6; padding-top: 15px; }
+        .log-table { width: 100%; min-width: 100%; font-size: 12px; }
+        .log-table th { background-color: #e9ecef; color: #333; position: static; }
+        .log-table td { text-align: left; padding: 6px 10px; }
     </style>
 </head>
 <body>
@@ -70,7 +91,7 @@
     </div>
 
     <div class="main-container">
-        <!-- Sol Taraf: Tam Detaylı Kayıt ve Düzenleme Formu -->
+        <!-- Sol Taraf: Kayıt ve Düzenleme Formu -->
         <div class="form-box">
             <h3 id="formTitle" style="margin-top:0; color:#28a745; border-bottom:2px solid #eee; padding-bottom:5px;">🛠️ Yeni Sıkıcı Ekle</h3>
             <input type="hidden" id="editIndex" value="-1">
@@ -117,7 +138,7 @@
             </div>
             <div class="form-group">
                 <label>Kalibrasyon Tarihi:</label>
-                <input type="text" id="kalibrasyon" placeholder="Örn: 12.04.2026 veya Tarih">
+                <input type="text" id="kalibrasyon" placeholder="Örn: 12.04.2026">
             </div>
             <div class="form-group">
                 <label>Durum:</label>
@@ -146,7 +167,7 @@
             </div>
             <div class="form-group">
                 <label>Görsel URL / Base64:</label>
-                <input type="text" id="gorsel" placeholder="Resim linki veya boş bırakın">
+                <input type="text" id="gorsel" placeholder="Resim linki veya bos bırakın">
             </div>
             
             <button class="btn-block btn-save" onclick="kaydet()">💾 Listeye Kaydet</button>
@@ -175,6 +196,67 @@
             <div class="json-actions">
                 <button class="btn-row" style="background-color: #17a2b8; padding:10px 15px;" onclick="hafizayiSifirla()">🔄 Hafızayı Boşalt</button>
                 <button class="btn-row" style="background-color: #218838; padding:10px 15px;" onclick="exportJSON()">📥 Güncel JSON Olarak İndir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETAY VE LOG RAPORU MODAL PENCERESİ -->
+    <div id="detayModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="modalKapat()">&times;</span>
+            
+            <!-- PDF Baskı Alanı Başlangıcı -->
+            <div id="pdfBaskiAlani">
+                <div class="pdf-header">
+                    <div>
+                        <h2 style="margin:0; color:#28a745; font-size:20px;">TÜRKTRAKTÖR ERENLER FABRİKASI</h2>
+                        <p style="margin:4px 0 0 0; font-size:13px; color:#666;">Sıkıcı Ekipman Teknik Detay Kartı</p>
+                    </div>
+                    <div id="modalResimAlani"></div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item"><strong>Seri No:</strong> <span id="lblSeriNo"></span></div>
+                    <div class="detail-item"><strong>ID No:</strong> <span id="lblIdNo"></span></div>
+                    <div class="detail-item"><strong>Marka / Model:</strong> <span id="lblMarkaModel"></span></div>
+                    <div class="detail-item"><strong>Sıkıcı Tipi:</strong> <span id="lblTip"></span></div>
+                    <div class="detail-item"><strong>Tork Aralığı:</strong> <span id="lblTork"></span></div>
+                    <div class="detail-item"><strong>Bulunduğu Hat:</strong> <span id="lblHat"></span></div>
+                    <div class="detail-item"><strong>İstasyon / AGP:</strong> <span id="lblIstasyon"></span></div>
+                    <div class="detail-item"><strong>Alan Sorumlusu:</strong> <span id="lblSorumlu"></span></div>
+                    <div class="detail-item"><strong>Kalibrasyon Tarihi:</strong> <span id="lblKalibrasyon"></span></div>
+                    <div class="detail-item"><strong>Mevcut Durum:</strong> <span id="lblDurum"></span></div>
+                    <div class="detail-item"><strong>Teslim Alınma Tarihi:</strong> <span id="lblTeslimTarihi"></span></div>
+                    <div class="detail-item"><strong>Envanter Alım Tarihi:</strong> <span id="lblAlimTarihi"></span></div>
+                </div>
+
+                <div style="margin-bottom:15px; font-size:14px;">
+                    <strong>Arızalı Kök Neden:</strong> <span id="lblKokNeden">-</span>
+                </div>
+                <div style="margin-bottom:20px; font-size:14px;">
+                    <strong>Açıklama:</strong> <span id="lblAciklama">-</span>
+                </div>
+
+                <!-- Dinamik Gelen Log Rapor Listesi -->
+                <div class="log-section">
+                    <h4 style="margin:0 0 10px 0; color:#333; font-size:14px;">📋 Cihaz Geçmiş Hareket Logları</h4>
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th style="width:25%;">Tarih</th>
+                                <th>Yapılan İşlem / Durum Değişikliği</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalLogTableBody">
+                            <!-- JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- PDF Baskı Alanı Sonu -->
+
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn-row" style="background-color:#007bff; padding:10px 20px;" onclick="pdfIndir()">📥 PDF Raporu İndir</button>
             </div>
         </div>
     </div>
@@ -249,7 +331,6 @@
             const logTarih = new Date().toISOString().split('T')[0];
 
             if (editIndex === -1) {
-                // Yeni Cihaz
                 const yeniCihaz = {
                     seriNo, idNo, marka, model, tork, tip, hat, istasyon, sorumlu, kalibrasyon, 
                     durum, kokNeden, aciklama, teslimTarihi, alimTarihi, gorsel,
@@ -257,8 +338,9 @@
                 };
                 sikiciListesi.push(yeniCihaz);
             } else {
-                // Düzenleme
                 const eskiDurum = sikiciListesi[editIndex].durum;
+                
+                if (!sikiciListesi[editIndex].logs) sikiciListesi[editIndex].logs = [];
                 
                 sikiciListesi[editIndex].seriNo = seriNo;
                 sikiciListesi[editIndex].idNo = idNo;
@@ -278,10 +360,14 @@
                 sikiciListesi[editIndex].gorsel = gorsel;
 
                 if (eskiDurum !== durum) {
-                    if (!sikiciListesi[editIndex].logs) sikiciListesi[editIndex].logs = [];
                     sikiciListesi[editIndex].logs.push({
                         tarih: logTarih,
                         mesaj: `Durum "${eskiDurum}" değerinden "${durum}" değerine güncellendi.`
+                    });
+                } else {
+                    sikiciListesi[editIndex].logs.push({
+                        tarih: logTarih,
+                        mesaj: "Cihaz bilgileri güncellendi."
                     });
                 }
             }
@@ -289,6 +375,66 @@
             hafizayiGuncelle();
             tabloyuGuncelle();
             formuTemizle();
+        }
+
+        // Detay Penceresini Açma Fonksiyonu
+        function detayGoster(index) {
+            const cihaz = sikiciListesi[index];
+            
+            document.getElementById('lblSeriNo').innerText = cihaz.seriNo;
+            document.getElementById('lblIdNo').innerText = cihaz.idNo;
+            document.getElementById('lblMarkaModel').innerText = `${cihaz.marka || '-'} / ${cihaz.model || '-'}`;
+            document.getElementById('lblTip').innerText = cihaz.tip || '-';
+            document.getElementById('lblTork').innerText = cihaz.tork || '-';
+            document.getElementById('lblHat').innerText = cihaz.hat || '-';
+            document.getElementById('lblIstasyon').innerText = cihaz.istasyon || '-';
+            document.getElementById('lblSorumlu').innerText = cihaz.sorumlu || '-';
+            document.getElementById('lblKalibrasyon').innerText = cihaz.kalibrasyon || '-';
+            document.getElementById('lblDurum').innerText = cihaz.durum || '-';
+            document.getElementById('lblTeslimTarihi').innerText = cihaz.teslimTarihi || '-';
+            document.getElementById('lblAlimTarihi').innerText = cihaz.alimTarihi || '-';
+            document.getElementById('lblKokNeden').innerText = cihaz.kokNeden || '-';
+            document.getElementById('lblAciklama').innerText = cihaz.aciklama || '-';
+
+            // Modal Resim Alanı Yönetimi
+            const resimAlani = document.getElementById('modalResimAlani');
+            if(cihaz.gorsel) {
+                resimAlani.innerHTML = `<img src="${cihaz.gorsel}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ddd;">`;
+            } else {
+                resimAlani.innerHTML = '';
+            }
+
+            // Log Tablosunu Oluşturma
+            const logTbody = document.getElementById('modalLogTableBody');
+            logTbody.innerHTML = '';
+            if (cihaz.logs && cihaz.logs.length > 0) {
+                cihaz.logs.forEach(log => {
+                    const row = `<tr><td><strong>${log.tarih}</strong></td><td>${log.mesaj}</td></tr>`;
+                    logTbody.innerHTML += row;
+                });
+            } else {
+                logTbody.innerHTML = `<tr><td colspan="2" style="color:#999; text-align:center;">Kayıtlı log geçmişi bulunmuyor.</td></tr>`;
+            }
+
+            document.getElementById('detayModal').style.display = 'flex';
+        }
+
+        function modalKapat() {
+            document.getElementById('detayModal').style.display = 'none';
+        }
+
+        // Açılan Detay Kartını PDF Olarak İndirme
+        function pdfIndir() {
+            const element = document.getElementById('pdfBaskiAlani');
+            const seriNo = document.getElementById('lblSeriNo').innerText;
+            const opsiyonlar = {
+                margin:       10,
+                filename:     `Sikici_Detay_Raporu_${seriNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opsiyonlar).from(element).save();
         }
 
         function cihazDuzenle(index) {
@@ -368,8 +514,8 @@
 
                 tr.innerHTML = `
                     <td>${imgHtml}</td>
-                    <td style="font-weight:bold;">${item.seriNo}</td>
-                    <td>${item.idNo}</td>
+                    <td class="clickable-cell" onclick="detayGoster(${index})">${item.seriNo}</td>
+                    <td class="clickable-cell" onclick="detayGoster(${index})">${item.idNo}</td>
                     <td>${item.marka || '-'} - ${item.model || '-'}</td>
                     <td>${item.tip || '-'}</td>
                     <td><span class="status-badge status-${dClass}">${item.durum}</span></td>
@@ -394,6 +540,14 @@
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
+        }
+
+        // Modal dışına tıklanırsa kapatma desteği
+        window.onclick = function(event) {
+            const modal = document.getElementById('detayModal');
+            if (event.target == modal) {
+                modalKapat();
+            }
         }
     </script>
 </body>
