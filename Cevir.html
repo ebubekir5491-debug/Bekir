@@ -3,84 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sıkıcı Veri Dönüştürücü (Excel <-> JSON)</title>
+    <title>Sıkıcı Kontrol - Excel JSON Çevirici</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { margin: 20px; background-color: #f1f3f7; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { color: #0056b3; border-bottom: 3px solid #0056b3; padding-bottom: 10px; margin-top: 0; }
-        .section-box { border: 1px solid #ddd; padding: 20px; border-radius: 6px; margin-bottom: 25px; background: #fafafa; }
-        h3 { margin-top: 0; color: #333; display: flex; align-items: center; gap: 8px; }
-        textarea { width: 100%; height: 180px; padding: 10px; font-family: monospace; font-size: 13px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
-        .btn { background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 10px; }
-        .btn:hover { background-color: #0056b3; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        .info-text { font-size: 13px; color: #666; margin-bottom: 10px; line-height: 1.4; }
-        .sablon-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        .sablon-table th, .sablon-table td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        .sablon-table th { background-color: #e9ecef; }
-        .result-box { margin-top: 15px; display: none; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { margin: 0; padding: 20px; background-color: #f3f4f6; color: #1f2937; }
+        .container { max-width: 1100px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 0; font-size: 24px; }
+        .alert-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #1e40af; }
+        textarea { width: 100%; height: 160px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 13px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #f9fafb; transition: border 0.2s; }
+        textarea:focus { border-color: #3b82f6; outline: none; background-color: #fff; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; background-color: #2563eb; color: white; border: none; padding: 11px 22px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin-top: 10px; gap: 8px; }
+        .btn:hover { background-color: #1d4ed8; }
+        .btn-success { background-color: #16a34a; }
+        .btn-success:hover { background-color: #15803d; }
+        .btn-purple { background-color: #7c3aed; }
+        .btn-purple:hover { background-color: #6d28d9; }
+        .section { margin-bottom: 35px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
+        h3 { margin-top: 0; color: #374151; font-size: 18px; }
+        .result-panel { margin-top: 15px; display: none; background: #fff; padding: 15px; border: 1px dashed #2563eb; border-radius: 6px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🔄 Sıkıcı Veri Dönüştürücü Merkezi</h1>
-    <p class="info-text">Bu sayfa vasıtasıyla Excel formatındaki envanterinizi Sıkıcı Kontrol Paneliyle tam uyumlu <strong>JSON</strong> yapısına dönüştürebilir veya tam tersi işlemle JSON verilerinizi Excel tablosuna geri çekebilirsiniz.</p>
+    <h1>🔄 Sıkıcı Kontrol Entegrasyon Merkezi</h1>
+    <div class="alert-box">
+        <strong>Kullanım Rehberi:</strong> Excel dosyanızdaki başlık satırı (seriNo, idNo...) dahil olmak üzere verilerinizi kopyalayın, aşağıdaki kutuya yapıştırın ve dönüşümü başlatın.
+    </div>
 
-    <div class="section-box">
-        <h3>📊 1. Adım: Excel Verilerini JSON Yapısına Çevir</h3>
-        <p class="info-text">
-            <strong>Nasıl Yapılır?</strong> Excel sayfanızdaki verileri (Başlık satırı dahil olacak şekilde) fareyle seçip kopyalayın (Ctrl+C). Aşağıdaki kutuya yapıştırın (Ctrl+V) ve dönüştür butonuna basın.
-        </p>
-        
-        <details style="margin-bottom: 15px;">
-            <summary style="cursor: pointer; font-weight: bold; color: #007bff;">📋 Doğru Eşleşme İçin Excel Sütun Rehberini Göster</summary>
-            <p class="info-text" style="margin-top: 5px;">Excel sayfanızın ilk satırındaki (başlıklar) isimlerin aşağıdaki kelimeleri içermesi veya bu sırada olması dönüşümün hatasız olmasını sağlar:</p>
-            <table class="sablon-table">
-                <tr>
-                    <th>Sütun No (Sıra)</th>
-                    <th>Önerilen Excel Başlık Adı</th>
-                    <th>Sistem Karşılığı / Açıklama</th>
-                </tr>
-                <tr><td>1</td><td>seriNo</td><td>Seri Numarası (Benzersiz ID)</td></tr>
-                <tr><td>2</td><td>idNo</td><td>Fabrika İç ID No (Örn: TT-123)</td></tr>
-                <tr><td>3</td><td>marka</td><td>Üretici Marka</td></tr>
-                <tr><td>4</td><td>model</td><td>Cihaz Modeli</td></tr>
-                <tr><td>5</td><td>tork</td><td>Tork Aralığı (Örn: 10-50 Nm)</td></tr>
-                <tr><td>6</td><td>tip</td><td>Elektrikli, Bataryalı veya Pnömatik</td></tr>
-                <tr><td>7</td><td>hat</td><td>Bulunduğu Üretim Hattı</td></tr>
-                <tr><td>8</td><td>istasyon</td><td>İstasyon / AGP Bilgisi</td></tr>
-                <tr><td>9</td><td>sorumlu</td><td>Operasyon Alan Sorumlusu</td></tr>
-                <tr><td>10</td><td>kalibrasyon</td><td>Son Kalibrasyon Tarihi</td></tr>
-                <tr><td>11</td><td>durum</td><td>Aktif, Arızalı, Yedek, Kalibrasyonda</td></tr>
-                <tr><td>12</td><td>kokNeden</td><td>Arıza Kök Nedeni (Varsa)</td></tr>
-                <tr><td>13</td><td>aciklama</td><td>Ekstra Açıklama Notları</td></tr>
-                <tr><td>14</td><td>teslimTarihi</td><td>Teslim Alındığı Tarih</td></tr>
-                <tr><td>15</td><td>alimTarihi</td><td>Yaşlanma İçin Alım Tarihi (YYYY-MM-DD)</td></tr>
-                <tr><td>16</td><td>gorsel</td><td>Görsel Resim URL Linki</td></tr>
-            </table>
-        </details>
+    <!-- EXCEL -> JSON -->
+    <div class="section">
+        <h3>📋 Excel'den Sıkıcı Kontrol JSON Dosyasına Çevir</h3>
+        <textarea id="excelInput" placeholder="Excel'den kopyaladığınız başlık ve veri satırlarını buraya yapıştırın (Tab boşluklu veri)..."></textarea>
+        <button class="btn btn-success" onclick="excelToSikiciJson()">⚡ Veriyi Dönüştür</button>
 
-        <textarea id="excelInput" placeholder="Excel tablonuzdan başlık satırıyla birlikte kopyaladığınız verileri buraya yapıştırın..."></textarea>
-        <button class="btn btn-success" onclick="excelToJsoncevir()">⚡ Excel Verisini JSON'a Dönüştür</button>
-
-        <div id="excelResultBox" class="result-box">
-            <h4 style="color:#28a745; margin-bottom:5px;">🎉 Dönüşüm Başarılı! Oluşturulan JSON Verisi:</h4>
-            <p class="info-text">Aşağıdaki çıktıyı kopyalayıp bir dosyaya kaydedebilir veya doğrudan bilgisayarınıza indirebilirsiniz.</p>
+        <div id="excelResultPanel" class="result-panel">
+            <h4 style="color:#16a34a; margin: 0 0 10px 0;">✓ Uyumlulaştırılmış JSON Başarıyla Üretildi!</h4>
             <textarea id="jsonOutput" readonly></textarea>
-            <button class="btn" onclick="jsonDosyasiIndir()" style="background-color: #6f42c1;">📥 .json Dosyası Olarak Bilgisayara İndir</button>
+            <button class="btn btn-purple" onclick="indirJsonDosyasi()">📥 .json Dosyası Olarak Kaydet ve İndir</button>
         </div>
     </div>
 
-    <div class="section-box">
-        <h3>📦 2. Adım: JSON Verisini Excel Formatına Çevir</h3>
-        <p class="info-text">Sıkıcı Kontrol Panelinden indirdiğiniz güncel envanter yedeklerinizi (`.json`) aşağıdaki kutuya yapıştırarak Excel'e doğrudan yapıştırılabilir tablo haline getirebilirsiniz.</p>
-        
-        <textarea id="jsonInput" placeholder="Sıkıcı kontrol panelinden indirdiğiniz JSON metnini buraya yapıştırın..."></textarea>
-        <button class="btn" onclick="jsonToExcelCevir()">⚡ JSON Verisini Tabloya Çevir</button>
+    <!-- JSON -> EXCEL TABLOSU -->
+    <div class="section">
+        <h3>📦 Mevcut JSON Verisini Excel Formatına Geri Çevir</h3>
+        <textarea id="jsonInput" placeholder="Sıkıcı kontrol panelinden aldığınız yedek veya güncel JSON listesini buraya yapıştırın..."></textarea>
+        <button class="btn" onclick="jsonToSikiciExcel()">⚡ Tablo Formatına Çevir</button>
 
-        <div id="jsonResultBox" class="result-box">
-            <h4 style="color:#007bff; margin-bottom:5px;">📋 Excel'e Yapıştırmaya Hazır Tablo Çıktısı:</h4>
-            <p class="info-text">Aşağıdaki kutunun içini tamamen seçip kopyalayın (Ctrl+A -> Ctrl+C) ve boş
+        <div id="jsonResultPanel" class="result-panel">
+            <h4 style="color:#2563eb; margin: 0 0 10px 0;">✓ Excel Uyumlu Metin Bloğu Hazır!</h4>
+            <p style="font-size: 13px; color:#555; margin-top:0;">Aşağıdaki kutunun içini seçip kopyalayın ve direkt boş bir Excel sayfasına yapıştırın.</p>
+            <textarea id="excelOutput" readonly></textarea>
+        </div>
+    </div>
+</div>
+
+<script>
+    function excelToSikiciJson() {
+        const rawData = document.getElementById('excelInput').value.trim();
+        if (!rawData) { alert("Lütfen veri alanını boş bırakmayın!"); return; }
+
+        const satirlar = rawData.split('\n');
+        if (satirlar.length < 2) { alert("Hata: En az bir başlık satırı ve bir veri satırı algılanmalıdır!"); return; }
+
+        // Başlıkları dinamik olarak yakalayıp indis haritası çıkartıyoruz
+        const basliklar = satirlar[0].split('\t').map(b => b.trim().replace(/[\r\n]/g, ""));
+        const findIndex = (name) => basliklar.findIndex(b => b.toLowerCase() === name.toLowerCase());
+
+        const indices = {
+            seriNo: findIndex('seriNo'), idNo: findIndex('idNo'), marka: findIndex('marka'),
+            model: findIndex('model'), tork: findIndex('tork'), tip: findIndex('tip'),
+            hat: findIndex('hat'), istasyon: findIndex('istasyon'), sorumlu: findIndex('sorumlu'),
+            kalibrasyon: findIndex('kalibrasyon'), durum: findIndex('durum'), kokNeden: findIndex('kokNeden'),
+            aciklama: findIndex('aciklama'), teslimTarihi: findIndex('teslimTarihi'),
+            alimTarihi: findIndex('alimTarihi'), gorsel: findIndex('gorsel')
+        };
+
+        const jsonListesi = [];
+        const bugun = new Date().toISOString().split('T')[0];
+
+        for (let i = 1; i < satirlar.length; i++) {
+            if (!satirlar[i].trim()) continue;
+            const hucreler = satirlar[i].split('\t').map(h => h.trim().replace(/[\r\n]/g, ""));
+            
+            const getValue = (idx, defaultVal = "") => (idx !== -1 && hucreler[idx] !== undefined) ? hucreler[idx] : defaultVal;
+
+            let obj = {
+                seriNo: getValue(indices.seriNo),
+                idNo: getValue(indices.idNo),
+                marka: getValue(indices.marka),
+                model: getValue(indices.model),
+                tork: getValue(indices.tork),
+                tip: getValue(indices.tip, "Elektrikli"),
+                hat: getValue(indices.hat),
+                istasyon: getValue(indices.istasyon),
+                sorumlu: getValue(indices.sorumlu),
+                kalibrasyon: getValue(indices.kalibrasyon),
+                durum: getValue(indices.durum, "Aktif"),
+                kokNeden: getValue(indices.kokNeden),
+                aciklama: getValue(indices.aciklama),
+                teslimTarihi: getValue(indices.teslimTarihi),
+                alimTarihi: getValue(indices.alimTarihi),
+                gorsel: getValue(indices.gorsel),
+                logs: [
+                    { tarih: bugun, mesaj: "Cihaz entegrasyon aracı vasıtasıyla toplu Excel aktarımı ile sisteme kaydedildi." }
+                ]
+            };
+
+            if (obj.seriNo) {
+                jsonListesi.push(obj);
+            }
+        }
+
+        document.getElementById('jsonOutput').value = JSON.stringify(jsonListesi, null, 4);
+        document.getElementById('excelResultPanel').style.display = 'block';
+    }
+
+    function indirJsonDosyasi() {
+        const jsonMetin = document.getElementById('jsonOutput').value;
+        if (!jsonMetin) return;
+        const blob = new Blob([jsonMetin], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "sikici_kontrol_envanter.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function jsonToSikiciExcel() {
+        const jsonMetin = document.getElementById('jsonInput').value.trim();
+        if (!jsonMetin) { alert("Lütfen JSON verisi girin!"); return; }
+
+        try {
+            const data = JSON.parse(jsonMetin);
+            const liste = Array.isArray(data) ? data : [data];
+            
+            let cikis = "seriNo\tidNo\tmarka\tmodel\ttork\ttip\that\tistasyon\tsorumlu\tkalibrasyon\tdurum\tkokNeden\taciklama\tteslimTarihi\talimTarihi\tgorsel\n";
+
+            liste.forEach(item => {
+                cikis += `${item.seriNo||''}\t${item.idNo||''}\t${item.marka||''}\t${item.model||''}\t${item.tork||''}\t${item.tip||''}\t${item.hat||''}\t${item.istasyon||''}\t${item.sorumlu||''}\t${item.kalibrasyon||''}\t${item.durum||''}\t${item.kokNeden||''}\t${item.aciklama||''}\t${item.teslimTarihi||''}\t${item.alimTarihi||''}\t${item.gorsel||''}\n`;
+            });
+
+            document.getElementById('excelOutput').value = cikis;
+            document.getElementById('jsonResultPanel').style.display = 'block';
+        } catch (e) {
+            alert("Geçersiz JSON formatı! Lütfen veriyi kontrol edin.");
+        }
+    }
+</script>
+</body>
+</html>
