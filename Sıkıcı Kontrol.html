@@ -425,4 +425,306 @@
                 if (eski.tip !== tip) degisiklikler.push(`Tip ("${eski.tip}" -> "${tip}")`);
                 if ((eski.hat || '') !== hat) degisiklikler.push(`Hat ("${eski.hat || ''}" -> "${hat}")`);
                 if ((eski.istasyon || '') !== istasyon) degisiklikler.push(`İstasyon-AGP ("${eski.istasyon || ''}" -> "${istasyon}")`);
-                if ((eski.sorumlu || '') !== sorumlu) degisiklikler.push(`Alan Sorumlusu ("${eski.sorumlu || ''}" -> "${sor
+                if ((eski.sorumlu || '') !== sorumlu) degisiklikler.push(`Alan Sorumlusu ("${eski.sorumlu || ''}" -> "${sorumlu}")`);
+                if ((eski.kalibrasyon || '') !== kalibrasyon) degisiklikler.push(`Kalibrasyon Tarihi ("${eski.kalibrasyon || ''}" -> "${kalibrasyon}")`);
+                if (eski.durum !== durum) degisiklikler.push(`Durum ("${eski.durum}" -> "${durum}")`);
+                if ((eski.kokNeden || '') !== kokNeden) degisiklikler.push(`Arıza Kök Nedeni ("${eski.kokNeden || ''}" -> "${kokNeden}")`);
+                if ((eski.aciklama || '') !== aciklama) degisiklikler.push(`Açıklama ("${eski.aciklama || ''}" -> "${aciklama}")`);
+                if ((eski.teslimTarihi || '') !== teslimTarihi) degisiklikler.push(`Teslim Alındığı Tarih ("${eski.teslimTarihi || ''}" -> "${teslimTarihi}")`);
+                if ((eski.alimTarihi || '') !== alimTarihi) degisiklikler.push(`Alım Tarihi ("${eski.alimTarihi || ''}" -> "${alimTarihi}")`);
+                if ((eski.gorsel || '') !== gorsel) degisiklikler.push(`Görsel verisi güncellendi.`);
+
+                // Verileri Güncelle
+                sikiciListesi[editIndex].seriNo = seriNo;
+                sikiciListesi[editIndex].idNo = idNo;
+                sikiciListesi[editIndex].marka = marka;
+                sikiciListesi[editIndex].model = model;
+                sikiciListesi[editIndex].tork = tork;
+                sikiciListesi[editIndex].tip = tip;
+                sikiciListesi[editIndex].hat = hat;
+                sikiciListesi[editIndex].istasyon = istasyon;
+                sikiciListesi[editIndex].sorumlu = sorumlu;
+                sikiciListesi[editIndex].kalibrasyon = kalibrasyon;
+                sikiciListesi[editIndex].durum = durum;
+                sikiciListesi[editIndex].kokNeden = kokNeden;
+                sikiciListesi[editIndex].aciklama = aciklama;
+                sikiciListesi[editIndex].teslimTarihi = teslimTarihi;
+                sikiciListesi[editIndex].alimTarihi = alimTarihi;
+                sikiciListesi[editIndex].gorsel = gorsel;
+
+                if (degisiklikler.length > 0) {
+                    degisiklikler.forEach(metin => {
+                        sikiciListesi[editIndex].logs.push({ tarih: logTarih, mesaj: metin });
+                    });
+                } else {
+                    sikiciListesi[editIndex].logs.push({ tarih: logTarih, mesaj: "Cihaz verileri değişiklik yapılmadan kaydedildi." });
+                }
+            }
+
+            hafizayiGuncelle();
+            tabloyuGuncelle();
+            formuTemizle();
+        }
+
+        function detayGoster(index) {
+            const cihaz = sikiciListesi[index];
+            
+            document.getElementById('lblSeriNo').innerText = cihaz.seriNo;
+            document.getElementById('lblIdNo').innerText = cihaz.idNo;
+            document.getElementById('lblMarkaModel').innerText = `${cihaz.marka || '-'} / ${cihaz.model || '-'}`;
+            document.getElementById('lblTip').innerText = cihaz.tip || '-';
+            document.getElementById('lblTork').innerText = cihaz.tork || '-';
+            document.getElementById('lblHat').innerText = cihaz.hat || '-';
+            document.getElementById('lblIstasyon').innerText = cihaz.istasyon || '-';
+            document.getElementById('lblSorumlu').innerText = cihaz.sorumlu || '-';
+            document.getElementById('lblKalibrasyon').innerText = cihaz.kalibrasyon || '-';
+            document.getElementById('lblDurum').innerText = cihaz.durum || '-';
+            document.getElementById('lblTeslimTarihi').innerText = cihaz.teslimTarihi || '-';
+            document.getElementById('lblAlimTarihi').innerText = cihaz.alimTarihi || '-';
+            document.getElementById('lblKokNeden').innerText = cihaz.kokNeden || '-';
+            document.getElementById('lblAciklama').innerText = cihaz.aciklama || '-';
+
+            if (cihaz.alimTarihi) {
+                const alimD = new Date(cihaz.alimTarihi);
+                const bugunD = new Date();
+                const farkZaman = bugunD - alimD;
+                const farkGun = Math.floor(farkZaman / (1000 * 60 * 60 * 24));
+                document.getElementById('lblYaslanmaGunu').innerText = farkGun >= 0 ? `${farkGun} Gündür Envanterde` : "İleri Tarihli Kayıt";
+            } else {
+                document.getElementById('lblYaslanmaGunu').innerText = "Alım Tarihi Girilmemiş";
+            }
+
+            const resimAlani = document.getElementById('modalResimAlani');
+            if(cihaz.gorsel) {
+                resimAlani.innerHTML = `<img src="${cihaz.gorsel}" style="max-width:60px; max-height:60px; border-radius:4px; border:1px solid #ddd;">`;
+            } else {
+                resimAlani.innerHTML = '';
+            }
+
+            const logTbody = document.getElementById('modalLogTableBody');
+            logTbody.innerHTML = '';
+            if (cihaz.logs && cihaz.logs.length > 0) {
+                const siraliLoglar = [...cihaz.logs].reverse();
+                siraliLoglar.forEach(log => {
+                    const row = `<tr><td><strong>${log.tarih}</strong></td><td>${log.mesaj}</td></tr>`;
+                    logTbody.innerHTML += row;
+                });
+            } else {
+                logTbody.innerHTML = `<tr><td colspan="2" style="color:#999; text-align:center;">Kayıtlı log geçmişi bulunmuyor.</td></tr>`;
+            }
+
+            document.getElementById('detayModal').style.display = 'flex';
+        }
+
+        function modalKapat() {
+            document.getElementById('detayModal').style.display = 'none';
+        }
+
+        function pdfIndir() {
+            const element = document.getElementById('pdfBaskiAlani');
+            const seriNo = document.getElementById('lblSeriNo').innerText;
+            const opsiyonlar = {
+                margin:       10,
+                filename:     `Sikici_Detay_Raporu_${seriNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opsiyonlar).from(element).save();
+        }
+
+        function topluPdfYazdir() {
+            const element = document.getElementById('topluPdfBaskiAlani');
+            const stil = document.createElement('style');
+            stil.innerHTML = '.no-print { display: none !important; }';
+            element.appendChild(stil);
+
+            const opsiyonlar = {
+                margin:       8,
+                filename:     `TurkTraktor_Sikici_Envanter_Listesi.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            
+            html2pdf().set(opsiyonlar).from(element).save().then(() => {
+                stil.remove();
+            });
+        }
+
+        function cihazDuzenle(index) {
+            if (!yetkiKontrolEt()) return;
+
+            const cihaz = sikiciListesi[index];
+            document.getElementById('seriNo').value = cihaz.seriNo;
+            document.getElementById('idNo').value = cihaz.idNo;
+            document.getElementById('marka').value = cihaz.marka || '';
+            document.getElementById('model').value = cihaz.model || '';
+            document.getElementById('tork').value = cihaz.tork || '';
+            document.getElementById('hat').value = cihaz.hat || '';
+            document.getElementById('istasyon').value = cihaz.istasyon || '';
+            document.getElementById('sorumlu').value = cihaz.sorumlu || '';
+            document.getElementById('kalibrasyon').value = cihaz.kalibrasyon || '';
+            document.getElementById('kokNeden').value = cihaz.kokNeden || '';
+            document.getElementById('aciklama').value = cihaz.aciklama || '';
+            document.getElementById('teslimTarihi').value = cihaz.teslimTarihi || '';
+            document.getElementById('alimTarihi').value = cihaz.alimTarihi || '';
+            document.getElementById('gorsel').value = cihaz.gorsel || '';
+            
+            // Tip Seçimi Eşleştirme
+            const selectTip = document.getElementById('tip');
+            const inputTipDiger = document.getElementById('tipDiger');
+            const tipSecenekleri = Array.from(selectTip.options).map(o => o.value);
+            
+            if (tipSecenekleri.includes(cihaz.tip)) {
+                selectTip.value = cihaz.tip;
+                inputTipDiger.style.display = 'none';
+                inputTipDiger.value = '';
+            } else {
+                selectTip.value = 'Diğer';
+                inputTipDiger.style.display = 'block';
+                inputTipDiger.value = cihaz.tip || '';
+            }
+
+            // Durum Seçimi Eşleştirme
+            const selectDurum = document.getElementById('durum');
+            const inputDurumDiger = document.getElementById('durumDiger');
+            const durumSecenekleri = Array.from(selectDurum.options).map(o => o.value);
+            
+            if (durumSecenekleri.includes(cihaz.durum)) {
+                selectDurum.value = cihaz.durum;
+                inputDurumDiger.style.display = 'none';
+                inputDurumDiger.value = '';
+            } else {
+                selectDurum.value = 'Diğer';
+                inputDurumDiger.style.display = 'block';
+                inputDurumDiger.value = cihaz.durum || '';
+            }
+
+            document.getElementById('editIndex').value = index;
+            document.getElementById('formTitle').innerHTML = "📝 Cihaz Bilgilerini Düzenle";
+            document.getElementById('formTitle').style.color = "#ffc107";
+        }
+
+        function cihazSil(index) {
+            if (!yetkiKontrolEt()) return;
+
+            if (confirm("Bu sıkıcı cihazını envanterden silmek istediğinize emin misiniz?")) {
+                sikiciListesi.splice(index, 1);
+                hafizayiGuncelle();
+                tabloyuGuncelle();
+            }
+        }
+
+        function formuTemizle() {
+            document.getElementById('seriNo').value = '';
+            document.getElementById('idNo').value = '';
+            document.getElementById('marka').value = '';
+            document.getElementById('model').value = '';
+            document.getElementById('tork').value = '';
+            document.getElementById('hat').value = '';
+            document.getElementById('istasyon').value = '';
+            document.getElementById('sorumlu').value = '';
+            document.getElementById('kalibrasyon').value = '';
+            document.getElementById('kokNeden').value = '';
+            document.getElementById('aciklama').value = '';
+            document.getElementById('teslimTarihi').value = '';
+            document.getElementById('alimTarihi').value = '';
+            document.getElementById('gorsel').value = '';
+            
+            document.getElementById('tip').value = 'Elektirikli Darbeli Sıkıcı';
+            document.getElementById('tipDiger').style.display = 'none';
+            document.getElementById('tipDiger').value = '';
+            
+            document.getElementById('durum').value = 'Aktif';
+            document.getElementById('durumDiger').style.display = 'none';
+            document.getElementById('durumDiger').value = '';
+
+            document.getElementById('editIndex').value = '-1';
+            document.getElementById('formTitle').innerHTML = "🛠️ Yeni Sıkıcı Ekle";
+            document.getElementById('formTitle').style.color = "#28a745";
+        }
+
+        function hafizayiSifirla() {
+            if (!yetkiKontrolEt()) return;
+
+            if (confirm("Tüm envanter listesini temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
+                sikiciListesi = [];
+                localStorage.removeItem('sikiciListesiVerisi');
+                tabloyuGuncelle();
+            }
+        }
+
+        function tabloyuGuncelle() {
+            const tbody = document.getElementById('kontrolTableBody');
+            tbody.innerHTML = '';
+
+            const filtreDegeri = document.getElementById('tabloFiltreGirdisi').value.toLowerCase().trim();
+
+            if (sikiciListesi.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#888; padding:30px;">⚠️ Envanterde kayıtlı cihaz bulunmamaktadır.</td></tr>`;
+                return;
+            }
+
+            let gorunurSatirSayisi = 0;
+
+            sikiciListesi.forEach((item, index) => {
+                const aramaMetni = `${item.seriNo} ${item.idNo} ${item.marka || ''} ${item.model || ''} ${item.tip || ''} ${item.durum}`.toLowerCase();
+                if (filtreDegeri !== '' && !aramaMetni.includes(filtreDegeri)) {
+                    return;
+                }
+
+                gorunurSatirSayisi++;
+                const tr = document.createElement('tr');
+                let imgHtml = item.gorsel ? `<img src="${item.gorsel}" class="img-preview" onerror="this.src='https://placeholder.com'">` : '<span>Yok</span>';
+                
+                // Durum sınıfı belirleme (CSS stili için sabitleme)
+                let hamDurum = String(item.durum).trim().toLowerCase();
+                let dClass = "diger";
+                if (["aktif", "arızalı", "yedek", "kalibrasyonda"].includes(hamDurum)) {
+                    dClass = hamDurum === "kalibrasyonda" ? "kalibrasyonda" : hamDurum;
+                }
+
+                tr.innerHTML = `
+                    <td>${imgHtml}</td>
+                    <td class="clickable-cell" onclick="detayGoster(${index})">${item.seriNo}</td>
+                    <td class="clickable-cell" onclick="detayGoster(${index})">${item.idNo}</td>
+                    <td>${item.marka || '-'} - ${item.model || '-'}</td>
+                    <td>${item.tip || '-'}</td>
+                    <td><span class="status-badge status-${dClass}" title="${item.durum}">${item.durum}</span></td>
+                    <td class="no-print">
+                        <button class="btn-row btn-edit" onclick="cihazDuzenle(${index})">Düzenle</button>
+                        <button class="btn-row btn-delete" onclick="cihazSil(${index})">Sil</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (gorunurSatirSayisi === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="color:#888; padding:30px;">🔍 Aradığınız kriterlere uygun cihaz bulunamadı.</td></tr>`;
+            }
+        }
+
+        function exportJSON() {
+            if (sikiciListesi.length === 0) {
+                alert("İndirmek için listede veri bulunmalıdır!");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sikiciListesi, null, 4));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "TurkTraktor_Sikici_Envanter_Listesi.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('detayModal');
+            if (event.target == modal) {
+                modalKapat();
+            }
+        }
+    </script>
+</body>
+</html>
