@@ -3,155 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sıkıcı Kontrol - Excel JSON Çevirici</title>
+    <title>Sıkıcı Kontrol - Doğrudan Excel JSON Çevirici</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body { margin: 0; padding: 20px; background-color: #f3f4f6; color: #1f2937; }
-        .container { max-width: 1100px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 0; font-size: 24px; }
-        .alert-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #1e40af; }
-        textarea { width: 100%; height: 160px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 13px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #f9fafb; transition: border 0.2s; }
-        textarea:focus { border-color: #3b82f6; outline: none; background-color: #fff; }
-        .btn { display: inline-flex; align-items: center; justify-content: center; background-color: #2563eb; color: white; border: none; padding: 11px 22px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin-top: 10px; gap: 8px; }
-        .btn:hover { background-color: #1d4ed8; }
-        .btn-success { background-color: #16a34a; }
-        .btn-success:hover { background-color: #15803d; }
-        .btn-purple { background-color: #7c3aed; }
-        .btn-purple:hover { background-color: #6d28d9; }
-        .section { margin-bottom: 35px; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; }
-        h3 { margin-top: 0; color: #374151; font-size: 18px; }
-        .result-panel { margin-top: 15px; display: none; background: #fff; padding: 15px; border: 1px dashed #2563eb; border-radius: 6px; }
+        .container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 12px; margin-top: 0; font-size: 22px; }
+        .alert-box { background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #1e40af; line-height: 1.5; }
+        
+        .upload-area { border: 3px dashed #3b82f6; background-color: #f8fafc; padding: 30px; border-radius: 8px; text-align: center; margin-bottom: 25px; cursor: pointer; transition: background 0.2s; }
+        .upload-area:hover { background-color: #f1f5f9; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; display: block; }
+        
+        textarea { width: 100%; height: 180px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 13px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #f9fafb; margin-top: 10px; }
+        
+        .btn { display: inline-flex; align-items: center; justify-content: center; background-color: #16a34a; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 15px; gap: 8px; width: 100%; }
+        .btn:hover { background-color: #15803d; }
+        .btn:disabled { background-color: #9ca3af; cursor: not-get; }
+        
+        .status-msg { margin-top: 15px; font-weight: 600; font-size: 14px; text-align: center; display: none; }
+        .success { color: #16a34a; }
+        .error { color: #dc2626; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🔄 Sıkıcı Kontrol Entegrasyon Merkezi</h1>
+    <h1>📁 Sıkıcı Kontrol - Doğrudan Excel Dosya Yükleme Merkezi</h1>
+    
     <div class="alert-box">
-        <strong>Kullanım Rehberi:</strong> Excel dosyanızdaki başlık satırı (seriNo, idNo...) dahil olmak üzere verilerinizi kopyalayın, aşağıdaki kutuya yapıştırın ve dönüşümü başlatın.
+        <strong>Nasıl Kullanılır?</strong><br>
+        Hazırladığınız Excel dosyasını (`.xlsx` veya `.xls`) aşağıdaki alana tıklayarak seçin. Sistem Excel başlıklarınızı otomatik olarak eşleştirecek ve Sıkıcı Kontrol Panelinin detaylı log formatına uygun bir JSON çıktısı hazırlayacaktır.
     </div>
 
-    <!-- EXCEL -> JSON -->
-    <div class="section">
-        <h3>📋 Excel'den Sıkıcı Kontrol JSON Dosyasına Çevir</h3>
-        <textarea id="excelInput" placeholder="Excel'den kopyaladığınız başlık ve veri satırlarını buraya yapıştırın (Tab boşluklu veri)..."></textarea>
-        <button class="btn btn-success" onclick="excelToSikiciJson()">⚡ Veriyi Dönüştür</button>
-
-        <div id="excelResultPanel" class="result-panel">
-            <h4 style="color:#16a34a; margin: 0 0 10px 0;">✓ Uyumlulaştırılmış JSON Başarıyla Üretildi!</h4>
-            <textarea id="jsonOutput" readonly></textarea>
-            <button class="btn btn-purple" onclick="indirJsonDosyasi()">📥 .json Dosyası Olarak Kaydet ve İndir</button>
-        </div>
+    <div class="upload-area" onclick="document.getElementById('excelFile').click()">
+        <span class="upload-icon">📊</span>
+        <strong style="color: #2563eb;">Excel Dosyasını Seçmek İçin Tıklayın</strong>
+        <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">desteklenen formatlar: .xlsx, .xls</p>
+        <span id="fileNameDisplay" style="display:block; margin-top:10px; font-weight:bold; color:#1e2937;"></span>
+        <input type="file" id="excelFile" accept=".xlsx, .xls" onchange="excelDosyasiniOku(this)">
     </div>
 
-    <!-- JSON -> EXCEL TABLOSU -->
-    <div class="section">
-        <h3>📦 Mevcut JSON Verisini Excel Formatına Geri Çevir</h3>
-        <textarea id="jsonInput" placeholder="Sıkıcı kontrol panelinden aldığınız yedek veya güncel JSON listesini buraya yapıştırın..."></textarea>
-        <button class="btn" onclick="jsonToSikiciExcel()">⚡ Tablo Formatına Çevir</button>
+    <div id="statusOutput" class="status-msg"></div>
 
-        <div id="jsonResultPanel" class="result-panel">
-            <h4 style="color:#2563eb; margin: 0 0 10px 0;">✓ Excel Uyumlu Metin Bloğu Hazır!</h4>
-            <p style="font-size: 13px; color:#555; margin-top:0;">Aşağıdaki kutunun içini seçip kopyalayın ve direkt boş bir Excel sayfasına yapıştırın.</p>
-            <textarea id="excelOutput" readonly></textarea>
-        </div>
+    <div id="resultSection" style="display: none; margin-top: 20px;">
+        <button id="downloadBtn" class="btn" onclick="indirJsonDosyasi()">📥 Uyumlu JSON Olarak Dışa Aktar ve İndir</button>
+        <label style="display:block; margin-top:15px; font-weight:600; font-size:13px; color:#4b5563;">Oluşturulan JSON Önizlemesi:</label>
+        <textarea id="jsonPreview" readonly></textarea>
     </div>
 </div>
 
 <script>
-    function excelToSikiciJson() {
-        const rawData = document.getElementById('excelInput').value.trim();
-        if (!rawData) { alert("Lütfen veri alanını boş bırakmayın!"); return; }
+    let uretilenJsonVerisi = null;
 
-        const satirlar = rawData.split('\n');
-        if (satirlar.length < 2) { alert("Hata: En az bir başlık satırı ve bir veri satırı algılanmalıdır!"); return; }
+    function excelDosyasiniOku(input) {
+        const file = input.files[0];
+        if (!file) return;
 
-        // Başlıkları dinamik olarak yakalayıp indis haritası çıkartıyoruz
-        const basliklar = satirlar[0].split('\t').map(b => b.trim().replace(/[\r\n]/g, ""));
-        const findIndex = (name) => basliklar.findIndex(b => b.toLowerCase() === name.toLowerCase());
+        // Seçilen dosya ismini ekranda göster
+        document.getElementById('fileNameDisplay').innerText = `📄 Seçilen Dosya: ${file.name}`;
+        
+        const statusDiv = document.getElementById('statusOutput');
+        statusDiv.style.display = "block";
+        statusDiv.className = "status-msg";
+        statusDiv.innerText = "⏳ Excel dosyası çözümleniyor, lütfen bekleyin...";
 
-        const indices = {
-            seriNo: findIndex('seriNo'), idNo: findIndex('idNo'), marka: findIndex('marka'),
-            model: findIndex('model'), tork: findIndex('tork'), tip: findIndex('tip'),
-            hat: findIndex('hat'), istasyon: findIndex('istasyon'), sorumlu: findIndex('sorumlu'),
-            kalibrasyon: findIndex('kalibrasyon'), durum: findIndex('durum'), kokNeden: findIndex('kokNeden'),
-            aciklama: findIndex('aciklama'), teslimTarihi: findIndex('teslimTarihi'),
-            alimTarihi: findIndex('alimTarihi'), gorsel: findIndex('gorsel')
+        const reader = new FileReader();
+        
+        // Dosyayı binary (ikili) string olarak okuyoruz
+        reader.onload = function(e) {
+            try {
+                const data = e.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                
+                // Excel'deki İLK sayfayı (Sheet) hedef alıyoruz
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Sayfayı satır-satır JSON dizisine dönüştürüyoruz (Başlık satırı nesne anahtarları olur)
+                const excelSatirlari = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                
+                if (excelSatirlari.length === 0) {
+                    throw new Error("Seçilen Excel sayfasında veri bulunamadı veya başlıklar eksik.");
+                }
+
+                const temizlenmisDizi = [];
+                const bugun = new Date().toISOString().split('T')[0];
+
+                // Excel'den gelen verileri Sıkıcı Kontrol veritabanı formatıyla tam eşleştirme
+                excelSatirlari.forEach(satir => {
+                    // Excel başlıklarındaki büyük-küçük harf duyarlılığını veya olası boşlukları tolere etmek için esnek arama yapısı
+                    const bulValue = (key) => {
+                        const eslesenAnahtar = Object.keys(satir).find(k => k.trim().toLowerCase() === key.toLowerCase());
+                        return eslesenAnahtar ? String(satir[eslesenAnahtar]).trim() : "";
+                    };
+
+                    let obj = {
+                        seriNo: bulValue('seriNo'),
+                        idNo: bulValue('idNo'),
+                        marka: bulValue('marka'),
+                        model: bulValue('model'),
+                        tork: bulValue('tork'),
+                        tip: bulValue('tip') || "Elektrikli",
+                        hat: bulValue('hat'),
+                        istasyon: bulValue('istasyon'),
+                        sorumlu: bulValue('sorumlu'),
+                        kalibrasyon: bulValue('kalibrasyon'),
+                        durum: bulValue('durum') || "Aktif",
+                        kokNeden: bulValue('kokNeden'),
+                        aciklama: bulValue('aciklama'),
+                        teslimTarihi: bulValue('teslimTarihi'),
+                        alimTarihi: bulValue('alimTarihi'),
+                        gorsel: bulValue('gorsel'),
+                        logs: [
+                            { tarih: bugun, mesaj: "Cihaz entegrasyon aracı vasıtasıyla doğrudan Excel dosyasından envantere aktarıldı." }
+                        ]
+                    };
+
+                    // Sadece zorunlu alan olan seriNo dolu ise listeye dahil et
+                    if (obj.seriNo) {
+                        temizlenmisDizi.push(obj);
+                    }
+                });
+
+                if (temizlenmisDizi.length === 0) {
+                    throw new Error("Geçerli 'seriNo' içeren satır bulunamadı. Lütfen başlıkları kontrol edin.");
+                }
+
+                // Global değişkene ve önizlemeye ata
+                uretilenJsonVerisi = JSON.stringify(temizlenmisDizi, null, 4);
+                document.getElementById('jsonPreview').value = uretilenJsonVerisi;
+                
+                // Arayüzü başarılı durumuna getir
+                statusDiv.className = "status-msg success";
+                statusDiv.innerText = `✅ Başarılı! ${temizlenmisDizi.length} adet cihaz verisi yüklendi ve hazırlandı.`;
+                document.getElementById('resultSection').style.display = "block";
+
+            } catch (err) {
+                statusDiv.className = "status-msg error";
+                statusDiv.innerText = `❌ Hata Oluştu: ${err.message}`;
+                document.getElementById('resultSection').style.display = "none";
+                uretilenJsonVerisi = null;
+            }
         };
 
-        const jsonListesi = [];
-        const bugun = new Date().toISOString().split('T')[0];
+        reader.onerror = function() {
+            statusDiv.className = "status-msg error";
+            statusDiv.innerText = "❌ Dosya okunurken sistemsel bir hata meydana geldi.";
+        };
 
-        for (let i = 1; i < satirlar.length; i++) {
-            if (!satirlar[i].trim()) continue;
-            const hucreler = satirlar[i].split('\t').map(h => h.trim().replace(/[\r\n]/g, ""));
-            
-            const getValue = (idx, defaultVal = "") => (idx !== -1 && hucreler[idx] !== undefined) ? hucreler[idx] : defaultVal;
-
-            let obj = {
-                seriNo: getValue(indices.seriNo),
-                idNo: getValue(indices.idNo),
-                marka: getValue(indices.marka),
-                model: getValue(indices.model),
-                tork: getValue(indices.tork),
-                tip: getValue(indices.tip, "Elektrikli"),
-                hat: getValue(indices.hat),
-                istasyon: getValue(indices.istasyon),
-                sorumlu: getValue(indices.sorumlu),
-                kalibrasyon: getValue(indices.kalibrasyon),
-                durum: getValue(indices.durum, "Aktif"),
-                kokNeden: getValue(indices.kokNeden),
-                aciklama: getValue(indices.aciklama),
-                teslimTarihi: getValue(indices.teslimTarihi),
-                alimTarihi: getValue(indices.alimTarihi),
-                gorsel: getValue(indices.gorsel),
-                logs: [
-                    { tarih: bugun, mesaj: "Cihaz entegrasyon aracı vasıtasıyla toplu Excel aktarımı ile sisteme kaydedildi." }
-                ]
-            };
-
-            if (obj.seriNo) {
-                jsonListesi.push(obj);
-            }
-        }
-
-        document.getElementById('jsonOutput').value = JSON.stringify(jsonListesi, null, 4);
-        document.getElementById('excelResultPanel').style.display = 'block';
+        reader.readAsBinaryString(file);
     }
 
+    // JSON DOSYASINI BİLGİSAYARA KAYDETME
     function indirJsonDosyasi() {
-        const jsonMetin = document.getElementById('jsonOutput').value;
-        if (!jsonMetin) return;
-        const blob = new Blob([jsonMetin], { type: "application/json;charset=utf-8" });
+        if (!uretilenJsonVerisi) return;
+        
+        const blob = new Blob([uretilenJsonVerisi], { type: "application/json;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = "sikici_kontrol_envanter.json";
+        a.download = "sikici_kontrol_envanteri.json";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-    }
-
-    function jsonToSikiciExcel() {
-        const jsonMetin = document.getElementById('jsonInput').value.trim();
-        if (!jsonMetin) { alert("Lütfen JSON verisi girin!"); return; }
-
-        try {
-            const data = JSON.parse(jsonMetin);
-            const liste = Array.isArray(data) ? data : [data];
-            
-            let cikis = "seriNo\tidNo\tmarka\tmodel\ttork\ttip\that\tistasyon\tsorumlu\tkalibrasyon\tdurum\tkokNeden\taciklama\tteslimTarihi\talimTarihi\tgorsel\n";
-
-            liste.forEach(item => {
-                cikis += `${item.seriNo||''}\t${item.idNo||''}\t${item.marka||''}\t${item.model||''}\t${item.tork||''}\t${item.tip||''}\t${item.hat||''}\t${item.istasyon||''}\t${item.sorumlu||''}\t${item.kalibrasyon||''}\t${item.durum||''}\t${item.kokNeden||''}\t${item.aciklama||''}\t${item.teslimTarihi||''}\t${item.alimTarihi||''}\t${item.gorsel||''}\n`;
-            });
-
-            document.getElementById('excelOutput').value = cikis;
-            document.getElementById('jsonResultPanel').style.display = 'block';
-        } catch (e) {
-            alert("Geçersiz JSON formatı! Lütfen veriyi kontrol edin.");
-        }
     }
 </script>
 </body>
