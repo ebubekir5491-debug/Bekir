@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sıkıcı Kontrol Paneli</title>
-    <!-- PDF Çıktısı Alabilmek İçin Gerekli Kütüphane -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -95,7 +94,6 @@
     </div>
 
     <div class="main-container">
-        <!-- Sol Taraf: Kayıt ve Düzenleme Formu -->
         <div class="form-box">
             <h3 id="formTitle" style="margin-top:0; color:#28a745; border-bottom:2px solid #eee; padding-bottom:5px;">🛠️ Yeni Sıkıcı Ekle</h3>
             <input type="hidden" id="editIndex" value="-1">
@@ -178,9 +176,7 @@
             <button class="btn-block btn-clear" onclick="formuTemizle()">Vazgeç / Temizle</button>
         </div>
 
-        <!-- Sağ Taraf: Mevcut Sıkıcı Listesi Yönetimi -->
         <div class="table-box">
-            <!-- Dinamik Filtreleme Çubuğu -->
             <div class="filter-wrapper">
                 <strong style="font-size: 14px;">🔍 Canlı Filtrele:</strong>
                 <input type="text" id="tabloFiltreGirdisi" class="filter-input" placeholder="Seri No, ID No, Marka, Model, Tip veya Durum yazarak anlık arayın..." onkeyup="tabloyuGuncelle()">
@@ -211,12 +207,10 @@
         </div>
     </div>
 
-    <!-- DETAY VE LOG RAPORU MODAL PENCERESİ -->
     <div id="detayModal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="modalKapat()">&times;</span>
             
-            <!-- PDF Baskı Alanı Başlangıcı -->
             <div id="pdfBaskiAlani">
                 <div class="pdf-header">
                     <div>
@@ -239,7 +233,6 @@
                     <div class="detail-item"><strong>Mevcut Durum:</strong> <span id="lblDurum"></span></div>
                     <div class="detail-item"><strong>Teslim Alınma Tarihi:</strong> <span id="lblTeslimTarihi"></span></div>
                     <div class="detail-item"><strong>Envanter Alım Tarihi:</strong> <span id="lblAlimTarihi"></span></div>
-                    <!-- Yaşlanma Günü Alanı -->
                     <div class="detail-item" style="grid-column: span 2; background-color: #e9ecef; padding: 6px; border-radius: 4px; font-weight: bold; margin-top: 5px;">
                         📅 Cihaz Yaşlanma Süresi: <span id="lblYaslanmaGunu" style="color:#dc3545;">-</span>
                     </div>
@@ -252,7 +245,6 @@
                     <strong>Açıklama:</strong> <span id="lblAciklama">-</span>
                 </div>
 
-                <!-- Dinamik Gelen Log Rapor Listesi -->
                 <div class="log-section">
                     <h4 style="margin:0 0 10px 0; color:#333; font-size:14px;">📋 Cihaz Geçmiş Hareket Logları</h4>
                     <table class="log-table">
@@ -263,13 +255,10 @@
                             </tr>
                         </thead>
                         <tbody id="modalLogTableBody">
-                            <!-- JS ile doldurulacak -->
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
-            <!-- PDF Baskı Alanı Sonu -->
-
             <div style="margin-top:20px; text-align:right;">
                 <button class="btn-row" style="background-color:#007bff; padding:10px 20px;" onclick="pdfIndir()">📥 PDF Raporu İndir</button>
             </div>
@@ -292,7 +281,6 @@
             }
         };
 
-        // Tek seferlik yetki kontrolü sağlayan güvenlik fonksiyonu
         function yetkiKontrolEt() {
             if (sessionStorage.getItem('sikiciGirisIzni') === 'true') {
                 return true;
@@ -331,7 +319,7 @@
         }
 
         function kaydet() {
-            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+            if (!yetkiKontrolEt()) return;
 
             const seriNo = document.getElementById('seriNo').value.trim();
             const idNo = document.getElementById('idNo').value.trim();
@@ -364,17 +352,41 @@
             const logTarih = new Date().toISOString().split('T')[0];
 
             if (editIndex === -1) {
+                // Yeni Kayıt Yapılırken İlk Log Bilgilerinin Oluşturulması
                 const yeniCihaz = {
                     seriNo, idNo, marka, model, tork, tip, hat, istasyon, sorumlu, kalibrasyon, 
                     durum, kokNeden, aciklama, teslimTarihi, alimTarihi, gorsel,
-                    logs: [{ tarih: logTarih, mesaj: "Cihaz envantere yeni kaydedildi." }]
+                    logs: [
+                        { tarih: logTarih, mesaj: "Cihaz envantere yeni kaydedildi." },
+                        { tarih: logTarih, mesaj: `İlk Tanımlama -> Marka: ${marka||'-'}, Model: ${model||'-'}, Tork: ${tork||'-'}, Tip: ${tip}, Hat: ${hat||'-'}, İstasyon: ${istasyon||'-'}, Sorumlu: ${sorumlu||'-'}, Kalibrasyon: ${kalibrasyon||'-'}, Durum: ${durum}, Kök Neden: ${kokNeden||'-'}, Açıklama: ${aciklama||'-'}` }
+                    ]
                 };
                 sikiciListesi.push(yeniCihaz);
             } else {
-                const eskiDurum = sikiciListesi[editIndex].durum;
-                
-                if (!sikiciListesi[editIndex].logs) sikiciListesi[editIndex].logs = [];
-                
+                // Düzenleme Esnasında Alan Değişikliklerinin Detaylı Loglanması
+                const eski = sikiciListesi[editIndex];
+                if (!eski.logs) eski.logs = [];
+
+                let degisiklikler = [];
+
+                if (eski.seriNo !== seriNo) degisiklikler.push(`Seri No ("${eski.seriNo}" -> "${seriNo}")`);
+                if (eski.idNo !== idNo) degisiklikler.push(`ID No ("${eski.idNo}" -> "${idNo}")`);
+                if ((eski.marka || '') !== marka) degisiklikler.push(`Marka ("${eski.marka || ''}" -> "${marka}")`);
+                if ((eski.model || '') !== model) degisiklikler.push(`Model ("${eski.model || ''}" -> "${model}")`);
+                if ((eski.tork || '') !== tork) degisiklikler.push(`Tork Aralığı ("${eski.tork || ''}" -> "${tork}")`);
+                if (eski.tip !== tip) degisiklikler.push(`Tip ("${eski.tip}" -> "${tip}")`);
+                if ((eski.hat || '') !== hat) degisiklikler.push(`Hat ("${eski.hat || ''}" -> "${hat}")`);
+                if ((eski.istasyon || '') !== istasyon) degisiklikler.push(`İstasyon-AGP ("${eski.istasyon || ''}" -> "${istasyon}")`);
+                if ((eski.sorumlu || '') !== sorumlu) degisiklikler.push(`Alan Sorumlusu ("${eski.sorumlu || ''}" -> "${sorumlu}")`);
+                if ((eski.kalibrasyon || '') !== kalibrasyon) degisiklikler.push(`Kalibrasyon Tarihi ("${eski.kalibrasyon || ''}" -> "${kalibrasyon}")`);
+                if (eski.durum !== durum) degisiklikler.push(`Durum ("${eski.durum}" -> "${durum}")`);
+                if ((eski.kokNeden || '') !== kokNeden) degisiklikler.push(`Arıza Kök Nedeni ("${eski.kokNeden || ''}" -> "${kokNeden}")`);
+                if ((eski.aciklama || '') !== aciklama) degisiklikler.push(`Açıklama ("${eski.aciklama || ''}" -> "${aciklama}")`);
+                if ((eski.teslimTarihi || '') !== teslimTarihi) degisiklikler.push(`Teslim Alındığı Tarih ("${eski.teslimTarihi || ''}" -> "${teslimTarihi}")`);
+                if ((eski.alimTarihi || '') !== alimTarihi) degisiklikler.push(`Alım Tarihi ("${eski.alimTarihi || ''}" -> "${alimTarihi}")`);
+                if ((eski.gorsel || '') !== gorsel) degisiklikler.push(`Görsel verisi güncellendi.`);
+
+                // Verileri Güncelle
                 sikiciListesi[editIndex].seriNo = seriNo;
                 sikiciListesi[editIndex].idNo = idNo;
                 sikiciListesi[editIndex].marka = marka;
@@ -392,16 +404,12 @@
                 sikiciListesi[editIndex].alimTarihi = alimTarihi;
                 sikiciListesi[editIndex].gorsel = gorsel;
 
-                if (eskiDurum !== durum) {
-                    sikiciListesi[editIndex].logs.push({
-                        tarih: logTarih,
-                        mesaj: `Durum "${eskiDurum}" değerinden "${durum}" değerine güncellendi.`
+                if (degisiklikler.length > 0) {
+                    degisiklikler.forEach(metin => {
+                        sikiciListesi[editIndex].logs.push({ tarih: logTarih, mesaj: metin });
                     });
                 } else {
-                    sikiciListesi[editIndex].logs.push({
-                        tarih: logTarih,
-                        mesaj: "Cihaz bilgileri güncellendi."
-                    });
+                    sikiciListesi[editIndex].logs.push({ tarih: logTarih, mesaj: "Cihaz verileri değişiklik yapılmadan kaydedildi." });
                 }
             }
 
@@ -410,7 +418,6 @@
             formuTemizle();
         }
 
-        // Detay Penceresini Açma ve Yaşlanma Hesaplama Fonksiyonu
         function detayGoster(index) {
             const cihaz = sikiciListesi[index];
             
@@ -429,7 +436,6 @@
             document.getElementById('lblKokNeden').innerText = cihaz.kokNeden || '-';
             document.getElementById('lblAciklama').innerText = cihaz.aciklama || '-';
 
-            // Dinamik Yaşlanma Gün Hesabı
             if (cihaz.alimTarihi) {
                 const alimD = new Date(cihaz.alimTarihi);
                 const bugunD = new Date();
@@ -450,7 +456,9 @@
             const logTbody = document.getElementById('modalLogTableBody');
             logTbody.innerHTML = '';
             if (cihaz.logs && cihaz.logs.length > 0) {
-                cihaz.logs.forEach(log => {
+                // Logları en yeni üstte görünecek şekilde ters çevirerek yazdırıyoruz
+                const siraliLoglar = [...cihaz.logs].reverse();
+                siraliLoglar.forEach(log => {
                     const row = `<tr><td><strong>${log.tarih}</strong></td><td>${log.mesaj}</td></tr>`;
                     logTbody.innerHTML += row;
                 });
@@ -478,11 +486,8 @@
             html2pdf().set(opsiyonlar).from(element).save();
         }
 
-        // Tüm Tabloyu Toplu Halde PDF Olarak Çıkartma
         function topluPdfYazdir() {
             const element = document.getElementById('topluPdfBaskiAlani');
-            
-            // Baskıda işlem butonlarını gizlemek için stil ekliyoruz
             const stil = document.createElement('style');
             stil.innerHTML = '.no-print { display: none !important; }';
             element.appendChild(stil);
@@ -492,16 +497,16 @@
                 filename:     `TurkTraktor_Sikici_Envanter_Listesi.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' } // Tablo genişliği için yatay mod
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
             
             html2pdf().set(opsiyonlar).from(element).save().then(() => {
-                stil.remove(); // İşlem bitince stili siliyoruz
+                stil.remove();
             });
         }
 
         function cihazDuzenle(index) {
-            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+            if (!yetkiKontrolEt()) return;
 
             const cihaz = sikiciListesi[index];
             document.getElementById('seriNo').value = cihaz.seriNo;
@@ -527,7 +532,7 @@
         }
 
         function cihazSil(index) {
-            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+            if (!yetkiKontrolEt()) return;
 
             if (confirm("Bu sıkıcı cihazını envanterden silmek istediğinize emin misiniz?")) {
                 sikiciListesi.splice(index, 1);
@@ -558,7 +563,7 @@
         }
 
         function hafizayiSifirla() {
-            if (!yetkiKontrolEt()) return; // Şifre Kontrolü
+            if (!yetkiKontrolEt()) return;
 
             if (confirm("Tüm envanter listesini temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) {
                 sikiciListesi = [];
@@ -567,7 +572,6 @@
             }
         }
 
-        // Dinamik Filtreleme Kuralları Dahil Edilmiş Tablo Güncelleme Fonksiyonu
         function tabloyuGuncelle() {
             const tbody = document.getElementById('kontrolTableBody');
             tbody.innerHTML = '';
@@ -582,10 +586,9 @@
             let gorunurSatirSayisi = 0;
 
             sikiciListesi.forEach((item, index) => {
-                // Filtre Eşleşme Kontrolü
                 const aramaMetni = `${item.seriNo} ${item.idNo} ${item.marka || ''} ${item.model || ''} ${item.tip || ''} ${item.durum}`.toLowerCase();
                 if (filtreDegeri !== '' && !aramaMetni.includes(filtreDegeri)) {
-                    return; // Filtreye uymuyorsa bu cihazı atla
+                    return;
                 }
 
                 gorunurSatirSayisi++;
