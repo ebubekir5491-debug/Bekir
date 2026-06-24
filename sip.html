@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sipariş Yönetimi</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 15px;
+            color: #333;
+        }
+        .ana-konteyner {
+            max-width: 950px;
+            margin: 0 auto;
+        }
+        
+        .ust-bilgi-alani {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .musteri-ust-alani {
+            background: #ffffff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .musteri-ust-alani label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        .musteri-ust-alani select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 180px;
+            background-color: #f9f9f9;
+        }
+        .musteri-ust-alani select:focus {
+            outline: none;
+            border-color: #3498db;
+            background-color: #fff;
+        }
+
+        /* Sipariş Arama Kutusu */
+        .siparis-kodu-kutusu {
+            background: #ffffff;
+            padding: 8px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            font-size: 14px;
+            font-weight: bold;
+            color: #e67e22;
+            border-left: 4px solid #e67e22;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .siparis-kodu-kutusu .on-taki {
+            color: #7f8c8d;
+        }
+        .siparis-kodu-kutusu input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #d5dbdb;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            color: #e67e22;
+        }
+        .siparis-kodu-kutusu input:focus {
+            outline: none;
+            border-color: #e67e22;
+        }
+        .ara-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .ara-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .siparis-ana-baslik {
+            background-color: #eaecee;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .siparis-tablo-alani {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .dinamik-tablo {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            table-layout: fixed; /* Sütun taşmalarını önlemek için eklendi */
+        }
+        .dinamik-tablo th { 
+            background-color: #34495e; 
+            color: white; 
+            font-size: 13px;
+            border: 1px solid #d5dbdb;
+            padding: 8px 6px;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+        }
+        .dinamik-tablo td {
+            border: 1px solid #d5dbdb;
+            padding: 6px;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+        .dinamik-tablo tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .btn-kaydet {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .btn-kaydet:hover {
+            background-color: #219a52;
+        }
+
+        .veri-input, .veri-select {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-sizing: border-box;
+            height: 26px; /* Input yükseklikleri dengelendi */
+            font-size: 12px;
+        }
+
+        .oto-sira-no {
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: center;
+            background-color: #eaeded !important;
+        }
+
+        #pdfYazdirmaAlani {
+            background: #fff;
+            padding: 5px;
+        }
+
+        .satis-tutari-alani {
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .satis-kutusu {
+            background-color: #f4f6f6;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #d5dbdb;
+            text-align: right;
+            width: 200px;
+        }
+        .satis-kutusu label {
+            display: block;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+        .satis-kutusu input {
+            width: 100%;
+            padding: 6px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #27ae60;
+            text-align: right;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+        .satis-kutusu input:focus {
+            outline: none;
+            border-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ana-konteyner">
+
+    <div class="ust-bilgi-alani">
+        <div class="musteri-ust-alani">
+            <label for="siparisMusteriSec">Müşteri:</label>
+            <select id="siparisMusteriSec">
+                <option value="">-- Müşteri Seçin --</option>
+            </select>
+        </div>
+        
+        <div class="siparis-kodu-kutusu">
+            <span class="on-taki">SPR-</span>
+            <input type="text" id="siparisNoArama" placeholder="0001" maxlength="4">
+            <button class="ara-btn" onclick="siparisKodundanGetir()">Siparişi Getir</button>
+        </div>
+    </div>
+
+    <div id="anaSayfaBaslikAlani" class="siparis-ana-baslik">Sipariş Listesi</div>
+
+    <div class="siparis-tablo-alani">
+        <button class="btn-kaydet" onclick="siparisleriKaydet()">Tüm Siparişleri Kaydet</button>
+        
+        <div id="pdfYazdirmaAlani">
+            <table class="dinamik-tablo">
+                <thead>
+                    <tr id="dinamikBaslikSatiri"></tr>
+                </thead>
+                <tbody id="siparisTabloGovdesi">
+                    <tr>
+                        <td style="text-align: center; color: #7f8c8d;">Sütun başlıkları yükleniyor...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="satis-tutari-alani">
+                <div class="satis-kutusu">
+                    <label for="satisTutari">Satış Tutarı (TL):</label>
+                    <input type="number" id="satisTutari" placeholder="0.00" step="0.01" min="0">
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, getDocs, query, orderBy, addDoc, deleteDoc, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC3ev-xaGS-aqtT6SuGeE9QLbajEQ_Z5Ck",
+        authDomain: "adasineklik54-148c1.firebaseapp.com",
+        projectId: "adasineklik54-148c1",
+        storageBucket: "adasineklik54-148c1.firebasestorage.app",
+        messagingSenderId: "203700124554",
+        appId: "1:203700124554:web:71cc4b0f7e8fd4cfdba673",
+        measurementId: "G-HQCNB38NWQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let sutunlarListesi = [];
+    let basiliTutZamanlayici = null;
+    let bulunanSiparisIdleri = []; 
+
+    window.addEventListener('DOMContentLoaded', () => {
+        anaBasligiGetir();
+        musterileriYukle();
+        siparisKodunuGuvenliOlustur();
+        sutunBasliklariniGetirVeOlustur();
+    });
+
+    async function anaBasligiGetir() {
+        try {
+            const docRef = doc(db, "ayarlar", "anaSayfa");
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                let data = docSnap.data();
+                if (data.baslik) {
+                    document.getElementById('anaSayfaBaslikAlani').innerText = data.baslik;
+                }
+            }
+        } catch (e) {
+            console.error("Ana başlık yüklenirken hata oluştu:", e);
+        }
+    }
+
+    async function musterileriYukle() {
+        const selectMusteri = document.getElementById('siparisMusteriSec');
+        try {
+            const q = query(collection(db, "musteriler"), orderBy("adSoyad", "asc")); 
+            const querySnapshot = await getDocs(q);
+
+            selectMusteri.innerHTML = '<option value="">-- Müşteri Seçin --</option>';
+
+            if (querySnapshot.empty) {
+                console.log("Henüz müşteri eklenmemiş.");
+                return;
+            }
+
+            querySnapshot.forEach((doc) => {
+                let musteri = doc.data();
+                let option = document.createElement('option');
+                option.value = doc.id; 
+                option.innerText = musteri.adTamAdi || musteri.adSoyad || "İsimsiz Müşteri"; 
+                selectMusteri.appendChild(option);
+            });
+
+        } catch (e) {
+            console.error("Müşteriler yüklenemedi:", e);
+        }
+    }
+
+    window.siparisKodunuGuvenliOlustur = async function() {
+        try {
+            const q = query(collection(db, "siparisler"));
+            const querySnapshot = await getDocs(q);
+            
+            let enBuyukSayi = 0;
+            
+            querySnapshot.forEach((doc) => {
+                let siparis = doc.data();
+                let mevcutKod = siparis.siparisKodu; 
+                
+                if (mevcutKod && mevcutKod.includes("SPR-")) {
+                    let kodNumarasi = parseInt(mevcutKod.replace("SPR-", ""), 10);
+                    if (!isNaN(kodNumarasi) && kodNumarasi > enBuyukSayi) {
+                        enBuyukSayi = kodNumarasi;
+                    }
+                }
+            });
+            
+            const sonrakiNumara = enBuyukSayi + 1;
+            const kodStr = String(sonrakiNumara).padStart(4, '0');
+            
+            document.getElementById('siparisNoArama').value = kodStr;
+            bulunanSiparisIdleri = []; 
+        } catch (e) {
+            console.error("Sipariş kodu oluşturulamadı, varsayılan 0001 kullanılıyor:", e);
+            document.getElementById('siparisNoArama').value = "0001";
+        }
+    }
+
+    window.siparisKodundanGetir = async function() {
+        const arananNumara = document.getElementById('siparisNoArama').value.trim();
+        if(!arananNumara) {
+            alert("Lütfen aramak istediğiniz sipariş numarasını girin (Örn: 0002)");
+            return;
+        }
+
+        const tamSiparisKodu = "SPR-" + String(arananNumara).padStart(4, '0');
+        
+        try {
+            const q = query(collection(db, "siparisler"), where("siparisKodu", "==", tamSiparisKodu));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                alert(`"${tamSiparisKodu}" koduna ait sipariş bulunamadı. Bu numara ile yeni sipariş oluşturabilirsiniz.`);
+                document.getElementById('siparisTabloGovdesi').innerHTML = '';
+                document.getElementById('satisTutari').value = '';
+                document.getElementById('siparisMusteriSec').value = '';
+                bulunanSiparisIdleri = [];
+                yeniSatirEkle();
+                return;
+            }
+
+            document.getElementById('siparisTabloGovdesi').innerHTML = '';
+            bulunanSiparisIdleri = [];
+            
+            let musteriId = "";
+            let satisTutari = "";
+
+            querySnapshot.forEach((docSnap) => {
+                let siparisDetay = docSnap.data();
+                musteriId = siparisDetay.musteriId;
+                satisTutari = siparisDetay.satisTutari || "";
+                
+                bulunanSiparisIdleri.push({
+                    id: docSnap.id,
+                    siraNo: siparisDetay.siraNo
+                });
+
+                let satirTr = document.createElement('tr');
+                
+                satirTr.addEventListener('mousedown', () => basiliTutBaslat(satirTr));
+                satirTr.addEventListener('mouseup', () => basiliTutBitir());
+                satirTr.addEventListener('mouseleave', () => basiliTutBitir());
+                satirTr.addEventListener('touchstart', (e) => { e.preventDefault(); basiliTutBaslat(satirTr); });
+                satirTr.addEventListener('touchend', () => basiliTutBitir());
+                satirTr.addEventListener('touchcancel', () => basiliTutBitir());
+
+                sutunlarListesi.forEach((sutun, idx) => {
+                    let td = document.createElement('td');
+                    td.style.backgroundColor = sutun.veriArkaPlan;
+                    td.style.color = sutun.veriRenk;
+
+                    let kayitliDetay = siparisDetay.detaylar?.find(d => d.sutunId === sutun.id);
+                    let deger = kayitliDetay ? kayitliDetay.deger : "";
+
+                    if (sutun.veriTipi === 'liste' && sutun.listeOgeleri && sutun.listeOgeleri.length > 0) {
+                        let select = document.createElement('select');
+                        select.className = "veri-select";
+                        select.setAttribute("data-sutunid", sutun.id);
+                        select.style.textAlign = sutun.veriHizala;
+                        select.style.fontFamily = sutun.veriYaziTipi;
+                        if(sutun.veriBoyut) select.style.fontSize = sutun.veriBoyut;
+
+                        select.addEventListener('change', () => kontrolVeSatirAc(satirTr));
+
+                        let optBos = document.createElement('option');
+                        optBos.value = "";
+                        optBos.innerText = "-- Seçim Yapın --";
+                        select.appendChild(optBos);
+
+                        sutun.listeOgeleri.forEach(oget => {
+                            let opt = document.createElement('option');
+                            opt.value = oget;
+                            opt.innerText = oget;
+                            if (oget === deger) opt.selected = true;
+                            select.appendChild(opt);
+                        });
+                        td.appendChild(select);
+                        
+                    } else if (sutun.veriTipi === 'sirano') {
+                        td.className = "oto-sira-no";
+                        td.style.textAlign = sutun.veriHizala;
+                        td.style.fontFamily = sutun.veriYaziTipi;
+                        if(sutun.veriBoyut) td.style.fontSize = sutun.veriBoyut;
+                        td.innerText = siparisDetay.siraNo || "-"; 
+                        satirTr.appendChild(td);
+                        return;
+                        
+                    } else {
+                        let input = document.createElement('input');
+                        input.type = "text";
+                        input.className = "veri-input";
+                        input.value = deger;
+                        input.setAttribute("data-sutunid", sutun.id);
+                        input.style.textAlign = sutun.veriHizala;
+                        input.style.fontFamily = sutun.veriYaziTipi;
+                        if(sutun.veriBoyut) input.style.fontSize = sutun.veriBoyut;
+                        
+                        input.addEventListener('change', () => kontrolVeSatirAc(satirTr));
+                        
+                        td.appendChild(input);
+                    }
+                    satirTr.appendChild(td);
+                });
+
+                document.getElementById('siparisTabloGovdesi').appendChild(satirTr);
+            });
+
+            if(musteriId) document.getElementById('siparisMusteriSec').value = musteriId;
+            if(satisTutari) document.getElementById('satisTutari').value = satisTutari;
+
+            yeniSatirEkle();
+            otomatikSiraNumaralariniGuncelle();
+            alert(`Sipariş başarıyla getirildi. Dilerseniz değişiklik yapıp güncelleyebilirsiniz.`);
+
+        } catch(e) {
+            console.error("Sipariş getirilemedi:", e);
+            alert("Sipariş aranırken bir hata oluştu.");
+        }
+    }
+
+    async function sutunBasliklariniGetirVeOlustur() {
+        const baslikSatiri = document.getElementById('dinamikBaslikSatiri');
+        const govde = document.getElementById('siparisTabloGovdesi');
+        
+        baslikSatiri.innerHTML = '';
+        govde.innerHTML = '';
+
+        try {
+            const q = query(collection(db, "sutunlar"), orderBy("siraNo", "asc"));
+            const querySnapshot = await getDocs(q);
+
+            sutunlarListesi = [];
+
+            if (querySnapshot.empty) {
+                baslikSatiri.innerHTML = '<th>Sütunlar Yüklenemedi</th>';
+                govde.innerHTML = '<tr><td style="text-align: center; color: #7f8c8d;">Sütun başlığı henüz eklenmemiş.</td></tr>';
+                return;
+            }
+
+            querySnapshot.forEach((docSnap) => {
+                let sutun = docSnap.data();
+                sutun.id = docSnap.id;
+                sutunlarListesi.push(sutun);
+
+                let th = document.createElement('th');
+                th.innerText = sutun.baslikMetni;
+                
+                th.style.backgroundColor = sutun.baslikArkaPlan;
+                th.style.color = sutun.baslikRenk;
+                th.style.textAlign = sutun.baslikHizala;
+                th.style.fontFamily = sutun.baslikYaziTipi;
+                if(sutun.baslikBoyut) th.style.fontSize = sutun.baslikBoyut;
+
+                baslikSatiri.appendChild(th);
+            });
+
+            yeniSatirEkle();
+
+        } catch (e) {
+            console.error("Sütunlar yüklenemedi:", e);
+        }
+    }
+
+    window.yeniSatirEkle = function() {
+        const govde = document.getElementById('siparisTabloGovdesi');
+        
+        let yeniSatir = document.createElement('tr');
+        
+        yeniSatir.addEventListener('mousedown', () => basiliTutBaslat(yeniSatir));
+        yeniSatir.addEventListener('mouseup', () => basiliTutBitir());
+        yeniSatir.addEventListener('mouseleave', () => basiliTutBitir());
+        yeniSatir.addEventListener('touchstart', (e) => { e.preventDefault(); basiliTutBaslat(yeniSatir); });
+        yeniSatir.addEventListener('touchend', () => basiliTutBitir());
+        yeniSatir.addEventListener('touchcancel', () => basiliTutBitir());
+
+        sutunlarListesi.forEach((sutun, idx) => {
+            let td = document.createElement('td');
+            td.style.backgroundColor = sutun.veriArkaPlan;
+            td.style.color = sutun.veriRenk;
+
+            if (sutun.veriTipi === 'liste' && sutun.listeOgeleri && sutun.listeOgeleri.length > 0) {
+                let select = document.createElement('select');
+                select.className = "veri-select";
+                select.setAttribute("data-sutunid", sutun.id);
+                select.style.textAlign = sutun.veriHizala;
+                select.style.fontFamily = sutun.veriYaziTipi;
+                if(sutun.veriBoyut) select.style.fontSize = sutun.veriBoyut;
+
+                select.addEventListener('change', () => kontrolVeSatirAc(yeniSatir));
+
+                let optBos = document.createElement('option');
+                optBos.value = "";
+                optBos.innerText = "-- Seçim Yapın --";
+                select.appendChild(optBos);
+
+                sutun.listeOgeleri.forEach(oget => {
+                    let opt = document.createElement('option');
+                    opt.value = oget;
+                    opt.innerText = oget;
+                    select.appendChild(opt);
+                });
+                td.appendChild(select);
+                
+            } else if (sutun.veriTipi === 'sirano') {
+                td.className = "oto-sira-no";
+                td.style.textAlign = sutun.veriHizala;
+                td.style.fontFamily = sutun.veriYaziTipi;
+                if(sutun.veriBoyut) td.style.fontSize = sutun.veriBoyut;
+                td.innerText = "-"; 
+                yeniSatir.appendChild(td);
+                return;
+                
+            } else {
+                let input = document.createElement('input');
+                input.type = "text";
+                input.className = "veri-input";
+                input.setAttribute("data-sutunid", sutun.id);
+                input.style.textAlign = sutun.veriHizala;
+                input.style.fontFamily = sutun.veriYaziTipi;
+                if(sutun.veriBoyut) input.style.fontSize = sutun.veriBoyut;
+                
+                input.addEventListener('change', () => kontrolVeSatirAc(yeniSatir));
+                
+                td.appendChild(input);
+            }
+            yeniSatir.appendChild(td);
+        });
+
+        govde.appendChild(yeniSatir);
+        otomatikSiraNumaralariniGuncelle();
+    }
+
+    window.kontrolVeSatirAc = function(aktifSatir) {
+        const govde = document.getElementById('siparisTabloGovdesi');
+        const sonSatir = govde.lastElementChild;
+        
+        if (aktifSatir === sonSatir) {
+            let inputs = aktifSatir.querySelectorAll('.veri-input, .veri-select');
+            let doluMu = false;
+            inputs.forEach(inp => { if(inp.value !== "") doluMu = true; });
+            
+            if(doluMu) {
+                yeniSatirEkle();
+            }
+        }
+    }
+
+    function otomatikSiraNumaralariniGuncelle() {
+        const satirlar = document.querySelectorAll('#siparisTabloGovdesi tr');
+        
+        satirlar.forEach((satir, satirIndex) => {
+            sutunlarListesi.forEach((sutun, sutunIndex) => {
+                if (sutun.veriTipi === 'sirano') {
+                    let hedefHucre = satir.children[sutunIndex];
+                    if (hedefHucre) {
+                        let referansKatsayisi = Number(sutun.referansNo) || 1;
+                        hedefHucre.innerText = referansKatsayisi + satirIndex;
+                    }
+                }
+            });
+        });
+    }
+
+    function basiliTutBaslat(satirElementi) {
+        const govde = document.getElementById('siparisTabloGovdesi');
+        if(satirElementi === govde.lastElementChild) return;
+
+        let inputs = satirElementi.querySelectorAll('.veri-input, .veri-select');
+        let doluMu = false;
+        inputs.forEach(inp => { if(inp.value !== "") doluMu = true; });
+
+        if(doluMu) {
+            basiliTutZamanlayici = setTimeout(() => {
+                if (confirm("Bu sipariş satırını silmek istiyor musunuz?")) {
+                    satirElementi.remove();
+                    otomatikSiraNumaralariniGuncelle();
+                }
+            }, 1000);
+        }
+    }
+
+    function basiliTutBitir() {
+        if (basiliTutZamanlayici) {
+            clearTimeout(basiliTutZamanlayici);
+            basiliTutZamanlayici = null;
+        }
+    }
+
+    function siparisFisiniPdfIndir(musteriUnvani, siparisKodu) {
+        const element = document.getElementById('pdfYazdirmaAlani');
+        const baslikMetni = document.getElementById('anaSayfaBaslikAlani').innerText || "Sipariş Listesi";
+        const satisTutarVal = document.getElementById('satisTutari').value;
+        
+        const simdi = new Date();
+        const tarihStr = simdi.toISOString().split('T')[0];
+        const dosyaAdi = `Siparis_${siparisKodu}_${musteriUnvani.replace(/\s+/g, '_')}_${tarihStr}.pdf`;
+
+        const opt = {
+            margin:       10,
+            filename:     dosyaAdi,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+
+        const wrapper = document.createElement('div');
+        wrapper.style.fontFamily = "'Segoe UI', Tahoma, sans-serif";
+        wrapper.style.padding = "20px";
+        wrapper.style.background = "#fff";
+        
+        wrapper.innerHTML = `
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 15px;">
+                <h2 style="margin: 0; color: #2c3e50;">${baslikMetni}</h2>
+                <div style="font-size: 16px; font-weight: bold; color: #e67e22;">Sipariş Kodu: ${siparisKodu}</div>
+            </div>
+            <div style="background: #f8f9f9; padding: 15px; margin-bottom: 25px; border-radius: 6px; border-left: 4px solid #3498db; font-size: 14px;">
+                <strong>Müşteri Adı / Unvanı:</strong> ${musteriUnvani}
+                <br><strong>Oluşturulma Tarihi:</strong> ${simdi.toLocaleDateString('tr-TR')} ${simdi.toLocaleTimeString('tr-TR')}
+            </div>
+        `;
+        
+        const kopyaAlan = element.cloneNode(true);
+        
+        kopyaAlan.querySelectorAll('select').forEach(sel => {
+            const secilenDeger = sel.options[sel.selectedIndex]?.text || "";
+            const span = document.createElement('span');
+            span.innerText = secilenDeger.includes("--") ? "-" : secilenDeger;
+            sel.replaceWith(span);
+        });
+        kopyaAlan.querySelectorAll('input').forEach(inp => {
+            const span = document.createElement('span');
+            span.innerText = inp.value || "-";
+            inp.replaceWith(span);
+        });
+
+        const pdfSatisInput = kopyaAlan.querySelector('#satisTutari');
+        if (pdfSatisInput) {
+            pdfSatisInput.value = satisTutarVal;
+        }
+        
+        wrapper.appendChild(kopyaAlan);
+
+        html2pdf().set(opt).from(wrapper).save().then(() => {
+            document.getElementById('satisTutari').value = '';
+            document.getElementById('siparisTabloGovdesi').innerHTML = '';
+            siparisKodunuGuvenliOlustur();
+            yeniSatirEkle();
+        });
+    }
+
+    window.siparisleriKaydet = async function() {
+        const musteriSelect = document.getElementById('siparisMusteriSec');
+        const secilenMusteriId = musteriSelect.value;
+        const arananNumara = document.getElementById('siparisNoArama').value.trim();
+        const tamSiparisKodu = "SPR-" + String(arananNumara).padStart(4, '0');
+        const satisTutari = document.getElementById('satisTutari').value;
+        
+        if (!secilenMusteriId) {
+            alert("Lütfen kaydetmeden önce sol üst köşeden bir Müşteri seçin.");
+            return;
+        }
+
+        const secilenMusteriUnvani = musteriSelect.options[musteriSelect.selectedIndex].text;
+
+        const satirlar = document.querySelectorAll('#siparisTabloGovdesi tr');
+        let kaydedilecekSatirlar = [];
+        
+        satirlar.forEach(satir => {
+            let inputs = satir.querySelectorAll('.veri-input, .veri-select');
+            let doluMu = false;
+            inputs.forEach(inp => { if(inp.value !== "") doluMu = true; });
+            
+            if (doluMu) {
+                kaydedilecekSatirlar.push(satir);
+            }
+        });
+
+        if(kaydedilecekSatirlar.length === 0) {
+            alert("Kaydedilecek geçerli bir sipariş satırı bulunmuyor. Lütfen veri girişi yapın.");
+            return;
+        }
+
+        try {
+            if (bulunanSiparisIdleri && bulunanSiparisIdleri.length > 0) {
+                for (let eskiKayit of bulunanSiparisIdleri) {
+                    await deleteDoc(doc(db, "siparisler", eskiKayit.id));
+                }
+            }
+
+            let kaydedilenSayi = 0;
+            for (let satir of kaydedilecekSatirlar) {
+                let satirSiraNoDegeri = "";
+                sutunlarListesi.forEach((sutun, idx) => {
+                    if(sutun.veriTipi === 'sirano') {
+                        satirSiraNoDegeri = satir.children[idx].innerText;
+                    }
+                });
+
+                let satirVerisi = {
+                    siparisKodu: tamSiparisKodu,
+                    musteriId: secilenMusteriId,
+                    siraNo: satirSiraNoDegeri, 
+                    satisTutari: satisTutari,
+                    tاريخ: new Date().toISOString(), // Düzeltme: t/h tarih yazımı ingilizce string olarak bırakıldı
+                    detaylar: []
+                };
+
+                let inputlar = satir.querySelectorAll('.veri-input, .veri-select');
+                inputlar.forEach(inp => {
+                    let sutunId = inp.getAttribute("data-sutunid");
+                    satirVerisi.detaylar.push({
+                        sutunId: sutunId,
+                        deger: inp.value
+                    });
+                });
+
+                await addDoc(collection(db, "siparisler"), satirVerisi);
+                kaydedilenSayi++;
+            }
+
+            alert(kaydedilenSayi + " adet sipariş satırı başarıyla kaydedildi/güncellendi!");
+            
+            if (confirm("Sipariş fişini/listesini A4 Yatay PDF olarak indirmek ister misiniz?")) {
+                siparisFisiniPdfIndir(secilenMusteriUnvani, tamSiparisKodu);
+            } else {
+                document.getElementById('satisTutari').value = '';
+                document.getElementById('siparisTabloGovdesi').innerHTML = '';
+                siparisKodunuGuvenliOlustur();
+                yeniSatirEkle();
+            }
+
+        } catch (e) {
+            console.error("Siparişler kaydedilirken hata oluştu:", e);
+            alert("Kayıt sırasında bir hata yaşandı.");
+        }
+    }
+</script>
+
+</body>
+</html>
