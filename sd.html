@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sayfa Düzeni ve Sütun Yönetimi</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .ana-konteyner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        
+        .sayfa-izgarasi {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        .sol-sutun {
+            flex: 2;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .sag-sutun {
+            flex: 1;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .ana-baslik-alani {
+            background-color: #eaecee;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #34495e;
+            font-size: 13px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 13px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .form-section {
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            background-color: #fafafa;
+            display: none;
+        }
+        .section-title {
+            font-size: 16px;
+            color: #2980b9;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 6px;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+        .col {
+            flex: 1;
+        }
+        
+        .liste-tablosu {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .liste-tablosu th { background-color: #eaeded; font-size: 14px;}
+        .liste-tablosu th, .liste-tablosu td {
+            border: 1px solid #d5dbdb;
+            padding: 8px;
+            text-align: left;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+        .islem-btn-duzenle { background-color: #f39c12; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; margin-right: 4px; }
+        .islem-btn-duzenle:hover { background-color: #d68910; }
+        .islem-btn-sil { background-color: #e74c3c; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
+        .islem-btn-sil:hover { background-color: #c0392b; }
+        
+        .guncelleme-formu {
+            display: none;
+            background: #ebf5fb;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            border: 1px solid #a9cce3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ana-konteyner">
+    <h2>Sayfa Düzeni ve Sütun Yönetimi</h2>
+
+    <div class="sayfa-izgarasi">
+        
+        <div class="sol-sutun">
+            <h3 style="margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px;">📋 Eklenen Başlıklar ve Sütunlar</h3>
+            
+            <table class="liste-tablosu">
+                <thead>
+                    <tr>
+                        <th>Sıra</th>
+                        <th>Başlık Metni</th>
+                        <th>Veri Tipi</th>
+                        <th>Ref No</th>
+                        <th>Büyüklükler</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="yonetimTabloGovdesi"></tbody>
+            </table>
+
+            <div id="guncellemeFormAlani" class="guncelleme-formu">
+                <h3 style="color: #2980b9; margin-top:0; border-bottom: 1px dashed #a9cce3; padding-bottom: 5px;">Sütun Detaylarını Güncelle</h3>
+                <input type="hidden" id="guncelleId">
+                
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gSiraNo">Sıralama Numarası:</label>
+                            <input type="number" id="gSiraNo">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikMetni">Başlık Metni:</label>
+                            <input type="text" id="gBaslikMetni">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikBoyut">Başlık Boyutu (Örn: 14px):</label>
+                            <input type="text" id="gBaslikBoyut" placeholder="14px">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikRenk">Başlık Rengi:</label>
+                            <input type="color" id="gBaslikRenk">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikArkaPlan">Başlık Arka Plan:</label>
+                            <input type="color" id="gBaslikArkaPlan">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikHucumBoyut">GenişlikxYükseklik:</label>
+                            <input type="text" id="gBaslikHucumBoyut">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikHizala">Başlık Hizalama:</label>
+                            <select id="gBaslikHizala">
+                                <option value="left">Sol</option>
+                                <option value="center">Merkez</option>
+                                <option value="right">Sağ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gBaslikYaziTipi">Başlık Yazı Tipi:</label>
+                            <select id="gBaslikYaziTipi">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px dashed #a9cce3; margin: 10px 0;">
+                <h4 style="margin: 5px 0 10px 0; color: #27ae60;">Veri Özellikleri</h4>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriRenk">Veri Metin Rengi:</label>
+                            <input type="color" id="gVeriRenk">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriArkaPlan">Veri Arka Plan:</label>
+                            <input type="color" id="gVeriArkaPlan">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriHizala">Veri Hizalama:</label>
+                            <select id="gVeriHizala">
+                                <option value="left">Sol</option>
+                                <option value="center">Merkez</option>
+                                <option value="right">Sağ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriYaziTipi">Veri Yazı Tipi:</label>
+                            <select id="gVeriYaziTipi">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriBoyut">Veri Boyutu (Örn: 12px):</label>
+                            <input type="text" id="gVeriBoyut" placeholder="12px">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="gVeriTipi">Hücre Tipi / İçeriği:</label>
+                            <select id="gVeriTipi" onchange="gVeriTipiDegisti()">
+                                <option value="metin">Serbest Metin (Yazı)</option>
+                                <option value="liste">Açılır Liste (Dropdown)</option>
+                                <option value="sirano">Otomatik Sıra Numarası (Sayaç)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gReferansNoAlani" class="form-group" style="display: none;">
+                    <label for="gReferansNo">Başlangıç Referans Numarası (örn: 1, 3, 5...):</label>
+                    <input type="number" id="gReferansNo" value="1">
+                </div>
+
+                <div id="gListeSecenekleriAlani" class="form-group" style="display: none;">
+                    <label for="gListeOgeleri">Açılır Liste Seçenekleri (Her satıra bir tane yazın):</label>
+                    <textarea id="gListeOgeleri" rows="3"></textarea>
+                </div>
+
+                <button style="background-color: #27ae60; margin-top: 10px;" onclick="veriyiKaydet()">Tüm Değişiklikleri Kaydet</button>
+                <button style="background-color: #95a5a6; margin-top: 0;" onclick="guncellemeFormunuKapat()">İptal Et</button>
+            </div>
+        </div>
+
+        <div class="sag-sutun">
+            <div class="ana-baslik-alani">
+                <label for="anaSayfaBaslik">Sipariş Sayfası Ana Başlığı:</label>
+                <input type="text" id="anaSayfaBaslik" value="Sipariş Listesi" placeholder="Sayfa ana başlığını girin">
+                <button style="background-color: #e67e22; margin-top: 10px; width: 100%; font-size: 13px;" onclick="anaBasligiKaydet()">Ana Başlığı Güncelle</button>
+            </div>
+            
+            <button id="btnBaslikEkle" style="background-color: #2c3e50;" onclick="formuGoster()">+ Sütun / Başlık Ekle</button>
+
+            <div id="baslikFormu" class="form-section">
+                <h3 class="section-title">Başlık ve Sütun Özellikleri</h3>
+
+                <div class="form-group">
+                    <label for="siraNo">Sıralama Numarası (Soldan Sağa):</label>
+                    <input type="number" id="siraNo" min="1" placeholder="örn: 1, 2, 3...">
+                </div>
+
+                <div class="form-group">
+                    <label for="baslikMetni">Başlık Metni:</label>
+                    <input type="text" id="baslikMetni" placeholder="Başlık yazın">
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikBoyut">Başlık Boyutu (Örn: 14px):</label>
+                            <input type="text" id="baslikBoyut" placeholder="örn: 24px">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikRenk">Başlık Rengi:</label>
+                            <input type="color" id="baslikRenk" value="#000000">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikArkaPlan">Arka Plan Rengi:</label>
+                            <input type="color" id="baslikArkaPlan" value="#ffffff">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikHucumBoyut">Genişlik x Yükseklik:</label>
+                            <input type="text" id="baslikHucumBoyut" placeholder="örn: 100% veya 300px x 50px">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikHizala">Hizalama:</label>
+                            <select id="baslikHizala">
+                                <option value="left">Sol</option>
+                                <option value="center">Merkez</option>
+                                <option value="right">Sağ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="baslikYaziTipi">Yazı Tipi:</label>
+                            <select id="baslikYaziTipi">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;">
+
+                <h3 class="section-title" style="color: #27ae60; border-bottom-color: #2ecc71;">Veri (İçerik) Özellikleri</h3>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriRenk">Metin Rengi:</label>
+                            <input type="color" id="veriRenk" value="#333333">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriArkaPlan">Arka Plan Rengi:</label>
+                            <input type="color" id="veriArkaPlan" value="#f9f9f9">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriHizala">Hizalama:</label>
+                            <select id="veriHizala">
+                                <option value="left">Sol</option>
+                                <option value="center">Merkez</option>
+                                <option value="right">Sağ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriYaziTipi">Yazı Tipi:</label>
+                            <select id="veriYaziTipi">
+                                <option value="Arial, sans-serif">Arial</option>
+                                <option value="'Segoe UI', Tahoma, sans-serif">Segoe UI</option>
+                                <option value="'Times New Roman', serif">Times New Roman</option>
+                                <option value="'Courier New', monospace">Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriBoyut">Veri Boyutu (Örn: 12px):</label>
+                            <input type="text" id="veriBoyut" placeholder="örn: 16px">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="veriTipi">Hücre İçeriği:</label>
+                            <select id="veriTipi" onchange="veriTipiDegisti()">
+                                <option value="metin">Serbest Metin (Yazı)</option>
+                                <option value="liste">Açılır Liste (Dropdown)</option>
+                                <option value="sirano">Otomatik Sıra Numarası (Sayaç)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="referansNoAlani" class="form-group" style="display: none;">
+                    <label for="referansNo">Başlangıç Referans Numarası (örn: 1, 3, 5...):</label>
+                    <input type="number" id="referansNo" value="1">
+                </div>
+
+                <div id="listeSecenekleriAlani" class="form-group" style="display: none;">
+                    <label for="listeOgeleri">Açılır Liste Seçenekleri (Her satıra bir tane yazın):</label>
+                    <textarea id="listeOgeleri" rows="3" placeholder="Seçenek 1&#10;Seçenek 2"></textarea>
+                </div>
+
+                <button style="background-color: #27ae60; margin-top: 10px;" onclick="basligiKaydet()">Sütun Ayarlarını Kaydet</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, setDoc, doc, getDocs, query, orderBy, deleteDoc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC3ev-xaGS-aqtT6SuGeE9QLbajEQ_Z5Ck",
+        authDomain: "adasineklik54-148c1.firebaseapp.com",
+        projectId: "adasineklik54-148c1",
+        storageBucket: "adasineklik54-148c1.firebasestorage.app",
+        messagingSenderId: "203700124554",
+        appId: "1:203700124554:web:71cc4b0f7e8fd4cfdba673",
+        measurementId: "G-HQCNB38NWQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    window.addEventListener('DOMContentLoaded', () => {
+        listeleriYukle();
+    });
+
+    window.formuGoster = function() {
+        document.getElementById('baslikFormu').style.display = 'block';
+    }
+
+    window.veriTipiDegisti = function() {
+        var veriTipi = document.getElementById('veriTipi').value;
+        var listeAlani = document.getElementById('listeSecenekleriAlani');
+        var refAlani = document.getElementById('referansNoAlani');
+        
+        listeAlani.style.display = (veriTipi === 'liste') ? 'block' : 'none';
+        refAlani.style.display = (veriTipi === 'sirano') ? 'block' : 'none';
+    }
+
+    window.gVeriTipiDegisti = function() {
+        var veriTipi = document.getElementById('gVeriTipi').value;
+        var listeAlani = document.getElementById('gListeSecenekleriAlani');
+        var refAlani = document.getElementById('gReferansNoAlani');
+        
+        listeAlani.style.display = (veriTipi === 'liste') ? 'block' : 'none';
+        refAlani.style.display = (veriTipi === 'sirano') ? 'block' : 'none';
+    }
+
+    window.anaBasligiKaydet = async function() {
+        var anaBaslik = document.getElementById('anaSayfaBaslik').value;
+        if (!anaBaslik) {
+            alert("Ana başlık boş bırakılamaz.");
+            return;
+        }
+        try {
+            await setDoc(doc(db, "ayarlar", "anaSayfa"), { baslik: anaBaslik });
+            alert("Ana başlık başarıyla güncellendi!");
+        } catch (e) {
+            console.error("Hata: ", e);
+            alert("Güncellenirken hata oluştu.");
+        }
+    }
+
+    window.basligiKaydet = async function() {
+        var siraNo = document.getElementById('siraNo').value;
+        var baslikMetni = document.getElementById('baslikMetni').value;
+
+        if (!siraNo || !baslikMetni) {
+            alert("Lütfen bir Sıralama Numarası ve Başlık Metni giriniz.");
+            return;
+        }
+
+        let sutunVerisi = {
+            siraNo: Number(siraNo),
+            baslikMetni: baslikMetni,
+            baslikBoyut: document.getElementById('baslikBoyut').value,
+            baslikRenk: document.getElementById('baslikRenk').value,
+            baslikArkaPlan: document.getElementById('baslikArkaPlan').value,
+            baslikHucumBoyut: document.getElementById('baslikHucumBoyut').value,
+            baslikHizala: document.getElementById('baslikHizala').value,
+            baslikYaziTipi: document.getElementById('baslikYaziTipi').value,
+            veriRenk: document.getElementById('veriRenk').value,
+            veriArkaPlan: document.getElementById('veriArkaPlan').value,
+            veriHizala: document.getElementById('veriHizala').value,
+            veriYaziTipi: document.getElementById('veriYaziTipi').value,
+            veriBoyut: document.getElementById('veriBoyut').value,
+            veriTipi: document.getElementById('veriTipi').value,
+            referansNo: document.getElementById('veriTipi').value === 'sirano' ? Number(document.getElementById('referansNo').value) : null,
+            listeOgeleri: document.getElementById('veriTipi').value === 'liste' 
+                ? document.getElementById('listeOgeleri').value.split('\n').map(item => item.trim()) 
+                : []
+        };
+
+        try {
+            await addDoc(collection(db, "sutunlar"), sutunVerisi);
+            alert("Sütun özellikleri başarıyla kaydedildi!");
+            document.getElementById('siraNo').value = '';
+            document.getElementById('baslikMetni').value = '';
+            document.getElementById('baslikFormu').style.display = 'none';
+            listeleriYukle();
+        } catch (e) {
+            console.error("Kayıt hatası: ", e);
+            alert("Veritabanına kayıt yapılamadı.");
+        }
+    }
+
+    async function listeleriYukle() {
+        const tbody = document.getElementById('yonetimTabloGovdesi');
+        tbody.innerHTML = '';
+        try {
+            const q = query(collection(db, "sutunlar"), orderBy("siraNo", "asc"));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Henüz sütun eklenmemiş.</td></tr>';
+                return;
+            }
+
+            querySnapshot.forEach((docSnap) => {
+                let sutun = docSnap.data();
+                let id = docSnap.id;
+                let row = document.createElement('tr');
+                
+                let tipGosterimi = "Metin";
+                if(sutun.veriTipi === 'liste') tipGosterimi = "Açılır Liste";
+                if(sutun.veriTipi === 'sirano') tipGosterimi = `Sıra No (Ref: ${sutun.referansNo})`;
+
+                row.innerHTML = `
+                    <td>${sutun.siraNo}</td>
+                    <td>${sutun.baslikMetni}</td>
+                    <td>${tipGosterimi}</td>
+                    <td>${sutun.referansNo !== null && sutun.referansNo !== undefined ? sutun.referansNo : '-'}</td>
+                    <td>
+                        Başlık: <b>${sutun.baslikBoyut || 'Standart'}</b><br>
+                        Veri: <b>${sutun.veriBoyut || 'Standart'}</b>
+                    </td>
+                    <td>
+                        <button class="islem-btn-duzenle" onclick="veriyiDuzenleFormunaYansit('${id}')">Düzenle</button>
+                        <button class="islem-btn-sil" onclick="veriyiSil('${id}')">Sil</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (e) {
+            console.error("Yönetim tablosu yüklenemedi:", e);
+        }
+    }
+
+    window.veriyiSil = async function(id) {
+        if (!confirm("Bu sütunu silmek istediğinize emin misiniz?")) return;
+        try {
+            await deleteDoc(doc(db, "sutunlar", id));
+            alert("Sütun başarıyla silindi.");
+            listeleriYukle();
+        } catch (e) {
+            console.error("Silme hatası:", e);
+        }
+    }
+
+    window.veriyiDuzenleFormunaYansit = async function(id) {
+        try {
+            const docRef = doc(db, "sutunlar", id);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                let data = docSnap.data();
+                document.getElementById('guncelleId').value = id;
+                document.getElementById('gSiraNo').value = data.siraNo || '';
+                document.getElementById('gBaslikMetni').value = data.baslikMetni || '';
+                document.getElementById('gBaslikBoyut').value = data.baslikBoyut || '';
+                document.getElementById('gBaslikRenk').value = data.baslikRenk || '#000000';
+                document.getElementById('gBaslikArkaPlan').value = data.baslikArkaPlan || '#ffffff';
+                document.getElementById('gBaslikHucumBoyut').value = data.baslikHucumBoyut || '';
+                document.getElementById('gBaslikHizala').value = data.baslikHizala || 'left';
+                document.getElementById('gBaslikYaziTipi').value = data.baslikYaziTipi || 'Arial, sans-serif';
+                
+                document.getElementById('gVeriRenk').value = data.veriRenk || '#333333';
+                document.getElementById('gVeriArkaPlan').value = data.veriArkaPlan || '#f9f9f9';
+                document.getElementById('gVeriHizala').value = data.veriHizala || 'left';
+                document.getElementById('gVeriYaziTipi').value = data.veriYaziTipi || 'Arial, sans-serif';
+                document.getElementById('gVeriBoyut').value = data.veriBoyut || '';
+                document.getElementById('gVeriTipi').value = data.veriTipi || 'metin';
+                
+                const listeAlani = document.getElementById('gListeSecenekleriAlani');
+                const refAlani = document.getElementById('gReferansNoAlani');
+
+                if (data.veriTipi === 'liste' && data.listeOgeleri) {
+                    document.getElementById('gListeOgeleri').value = data.listeOgeleri.join('\n');
+                    listeAlani.style.display = 'block';
+                    refAlani.style.display = 'none';
+                } else if (data.veriTipi === 'sirano') {
+                    document.getElementById('gReferansNo').value = data.referansNo || 1;
+                    refAlani.style.display = 'block';
+                    listeAlani.style.display = 'none';
+                } else {
+                    document.getElementById('gListeOgeleri').value = '';
+                    listeAlani.style.display = 'none';
+                    refAlani.style.display = 'none';
+                }
+
+                document.getElementById('guncellemeFormAlani').style.display = 'block';
+                window.scrollTo(0, 0);
+            }
+        } catch (e) {
+            console.error("Veri formuna yansıtılamadı:", e);
+        }
+    }
+
+    window.guncellemeFormunuKapat = function() {
+        document.getElementById('guncellemeFormAlani').style.display = 'none';
+    }
+
+    window.veriyiKaydet = async function() {
+        const id = document.getElementById('guncelleId').value;
+        let guncellenenVeri = {
+            siraNo: Number(document.getElementById('gSiraNo').value),
+            baslikMetni: document.getElementById('gBaslikMetni').value,
+            baslikBoyut: document.getElementById('gBaslikBoyut').value,
+            baslikRenk: document.getElementById('gBaslikRenk').value,
+            baslikArkaPlan: document.getElementById('gBaslikArkaPlan').value,
+            baslikHucumBoyut: document.getElementById('gBaslikHucumBoyut').value,
+            baslikHizala: document.getElementById('gBaslikHizala').value,
+            baslikYaziTipi: document.getElementById('gBaslikYaziTipi').value,
+            veriRenk: document.getElementById('gVeriRenk').value,
+            veriArkaPlan: document.getElementById('gVeriArkaPlan').value,
+            veriHizala: document.getElementById('gVeriHizala').value,
+            veriYaziTipi: document.getElementById('gVeriYaziTipi').value,
+            veriBoyut: document.getElementById('gVeriBoyut').value,
+            veriTipi: document.getElementById('gVeriTipi').value,
+            referansNo: document.getElementById('gVeriTipi').value === 'sirano' ? Number(document.getElementById('gReferansNo').value) : null,
+            listeOgeleri: document.getElementById('gVeriTipi').value === 'liste' 
+                ? document.getElementById('gListeOgeleri').value.split('\n').map(item => item.trim()) 
+                : []
+        };
+
+        if(!guncellenenVeri.baslikMetni || !guncellenenVeri.siraNo) {
+            alert("Başlık metni ve sıra numarası boş bırakılamaz.");
+            return;
+        }
+
+        try {
+            const sutunRef = doc(db, "sutunlar", id);
+            await updateDoc(sutunRef, guncellenenVeri);
+            alert("Sütun bilgileri başarıyla güncellendi!");
+            document.getElementById('guncellemeFormAlani').style.display = 'none';
+            listeleriYukle();
+        } catch (e) {
+            console.error("Güncelleme hatası:", e);
+            alert("Güncelleme başarısız oldu.");
+        }
+    }
+</script>
+
+</body>
+</html>
