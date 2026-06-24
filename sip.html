@@ -2,17 +2,18 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sipariş Yönetimi</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f4f7f6;
             margin: 0;
-            padding: 15px;
+            padding: 8px;
             color: #333;
+            -webkit-text-size-adjust: 100%;
         }
         .ana-konteyner {
             max-width: 950px;
@@ -24,31 +25,36 @@
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
         .musteri-ust-alani {
             background: #ffffff;
-            padding: 10px 15px;
+            padding: 10px 12px;
             border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-            display: inline-flex;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
         }
         .musteri-ust-alani label {
             font-weight: 600;
             color: #2c3e50;
             font-size: 13px;
+            white-space: nowrap;
         }
         .musteri-ust-alani select {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 13px;
-            min-width: 180px;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 14px;
+            flex-grow: 1;
             background-color: #f9f9f9;
+            height: 40px;
+            -webkit-appearance: none;
         }
         .musteri-ust-alani select:focus {
             outline: none;
@@ -59,9 +65,9 @@
         /* Sipariş Arama Kutusu */
         .siparis-kodu-kutusu {
             background: #ffffff;
-            padding: 8px 15px;
+            padding: 10px 12px;
             border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
             font-size: 14px;
             font-weight: bold;
             color: #e67e22;
@@ -69,19 +75,24 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            justify-content: space-between;
         }
         .siparis-kodu-kutusu .on-taki {
             color: #7f8c8d;
         }
         .siparis-kodu-kutusu input {
-            width: 60px;
-            padding: 5px;
-            border: 1px solid #d5dbdb;
-            border-radius: 4px;
-            font-size: 14px;
+            width: 70px;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 15px;
             font-weight: bold;
             text-align: center;
             color: #e67e22;
+            height: 40px;
+            box-sizing: border-box;
         }
         .siparis-kodu-kutusu input:focus {
             outline: none;
@@ -91,12 +102,13 @@
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
+            padding: 0 16px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             transition: background 0.3s;
+            height: 40px;
         }
         .ara-btn:hover {
             background-color: #2980b9;
@@ -104,46 +116,46 @@
 
         .siparis-ana-baslik {
             background-color: #eaecee;
-            padding: 15px;
+            padding: 10px;
             border-radius: 6px;
             text-align: center;
-            font-size: 20px;
+            font-size: 16px;
             font-weight: bold;
             color: #2c3e50;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .siparis-tablo-alani {
             background: #fff;
-            padding: 15px;
+            padding: 10px;
             border-radius: 6px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+            overflow-x: auto; 
         }
 
         .dinamik-tablo {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            table-layout: fixed; /* Sütun taşmalarını önlemek için eklendi */
+            border-collapse: collapse; /* Kalın çerçeveyi önlemek için birleştirildi */
+            margin-top: 8px;
+            min-width: 500px; 
         }
         .dinamik-tablo th { 
             background-color: #34495e; 
             color: white; 
-            font-size: 13px;
-            border: 1px solid #d5dbdb;
+            font-size: 12px;
+            border: 1px solid #ecf0f1; /* İnce, sade çerçeve */
             padding: 8px 6px;
             text-align: left;
             vertical-align: middle;
-            word-wrap: break-word;
         }
         .dinamik-tablo td {
-            border: 1px solid #d5dbdb;
-            padding: 6px;
+            border: 1px solid #ecf0f1; /* İnce, sade çerçeve */
+            padding: 4px 6px; /* Satır içi dikey boşluklar daraltıldı */
             text-align: left;
             vertical-align: middle;
             font-size: 12px;
-            word-wrap: break-word;
+            height: 38px; /* Hücrelerin satıra sığması için standart yükseklik */
         }
         .dinamik-tablo tbody tr:nth-child(even) {
             background-color: #f9f9f9;
@@ -153,14 +165,17 @@
             background-color: #27ae60;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 16px;
             font-size: 14px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: background 0.3s;
             font-weight: bold;
-            display: inline-block;
-            margin-bottom: 10px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+            text-align: center;
         }
         .btn-kaydet:hover {
             background-color: #219a52;
@@ -168,12 +183,24 @@
 
         .veri-input, .veri-select {
             width: 100%;
-            padding: 4px 6px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
+            padding: 6px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
             box-sizing: border-box;
-            height: 26px; /* Input yükseklikleri dengelendi */
-            font-size: 12px;
+            height: 32px; /* İçeriklerin taşmaması için optimize edildi */
+            font-size: 13px; 
+            background: #fff;
+        }
+        
+        .veri-select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%);
+            background-position: calc(100% - 10px) center, calc(100% - 6px) center;
+            background-size: 4px 4px, 4px 4px;
+            background-repeat: no-repeat;
+            padding-right: 18px;
         }
 
         .oto-sira-no {
@@ -185,44 +212,54 @@
 
         #pdfYazdirmaAlani {
             background: #fff;
-            padding: 5px;
+            padding: 3px;
         }
 
         .satis-tutari-alani {
-            margin-top: 15px;
+            margin-top: 12px;
             display: flex;
             justify-content: flex-end;
         }
         .satis-kutusu {
             background-color: #f4f6f6;
-            padding: 10px 15px;
+            padding: 10px 12px;
             border-radius: 6px;
-            border: 1px solid #d5dbdb;
+            border: 1px solid #ecf0f1;
             text-align: right;
-            width: 200px;
+            width: 100%;
+            max-width: 200px;
+            box-sizing: border-box;
         }
         .satis-kutusu label {
             display: block;
             font-weight: bold;
             color: #2c3e50;
             font-size: 12px;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
         .satis-kutusu input {
             width: 100%;
-            padding: 6px;
+            padding: 8px;
             border: 1px solid #bdc3c7;
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 15px;
             font-weight: bold;
             color: #27ae60;
             text-align: right;
             box-sizing: border-box;
             background-color: #fff;
+            height: 38px;
         }
         .satis-kutusu input:focus {
             outline: none;
             border-color: #27ae60;
+        }
+        
+        @media screen and (max-width: 768px) {
+            body { padding: 4px; }
+            .ust-bilgi-alani { gap: 6px; }
+            .dinamik-tablo td { height: 42px; }
+            .veri-input, .veri-select { font-size: 13px; height: 36px; } 
         }
     </style>
 </head>
@@ -239,8 +276,7 @@
         </div>
         
         <div class="siparis-kodu-kutusu">
-            <span class="on-taki">SPR-</span>
-            <input type="text" id="siparisNoArama" placeholder="0001" maxlength="4">
+            <div><span class="on-taki">SPR-</span><input type="tel" id="siparisNoArama" placeholder="0001" maxlength="4" inputmode="numeric"></div>
             <button class="ara-btn" onclick="siparisKodundanGetir()">Siparişi Getir</button>
         </div>
     </div>
@@ -265,7 +301,7 @@
             <div class="satis-tutari-alani">
                 <div class="satis-kutusu">
                     <label for="satisTutari">Satış Tutarı (TL):</label>
-                    <input type="number" id="satisTutari" placeholder="0.00" step="0.01" min="0">
+                    <input type="number" id="satisTutari" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
                 </div>
             </div>
         </div>
@@ -472,6 +508,8 @@
                         input.style.fontFamily = sutun.veriYaziTipi;
                         if(sutun.veriBoyut) input.style.fontSize = sutun.veriBoyut;
                         
+                        input.setAttribute("inputmode", "text");
+                        
                         input.addEventListener('change', () => kontrolVeSatirAc(satirTr));
                         
                         td.appendChild(input);
@@ -596,6 +634,8 @@
                 input.style.fontFamily = sutun.veriYaziTipi;
                 if(sutun.veriBoyut) input.style.fontSize = sutun.veriBoyut;
                 
+                input.setAttribute("inputmode", "text");
+                
                 input.addEventListener('change', () => kontrolVeSatirAc(yeniSatir));
                 
                 td.appendChild(input);
@@ -681,7 +721,7 @@
         };
 
         const wrapper = document.createElement('div');
-        wrapper.style.fontFamily = "'Segoe UI', Tahoma, sans-serif";
+        wrapper.style.fontFamily = "Arial, sans-serif";
         wrapper.style.padding = "20px";
         wrapper.style.background = "#fff";
         
@@ -778,7 +818,7 @@
                     musteriId: secilenMusteriId,
                     siraNo: satirSiraNoDegeri, 
                     satisTutari: satisTutari,
-                    tاريخ: new Date().toISOString(), // Düzeltme: t/h tarih yazımı ingilizce string olarak bırakıldı
+                    tarih: new Date().toISOString(),
                     detaylar: []
                 };
 
