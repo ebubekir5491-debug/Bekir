@@ -42,10 +42,10 @@
             </div>
         </div>
 
-        <div class="bg-amber-50 border-2 border-amber-300 text-amber-900 text-xs rounded-lg p-3 mb-6 grid grid-cols-3 gap-2 font-bold shadow-sm">
-            <div>📌 Testere Payı: <span class="text-red-600 text-sm font-black">3 mm</span></div>
-            <div>📌 Profil Temizleme Payı: <span class="text-red-600 text-sm font-black">2 mm + 2 mm</span></div>
-            <div>📌 Hurda Limiti: <span class="text-red-600 text-sm font-black">&lt; 55 cm</span> (Altı Hurda, Üstü Stoktur)</div>
+        <div class="bg-amber-50 border-2 border-amber-300 text-amber-900 text-xs rounded-lg p-3 mb-6 grid grid-cols-3 gap-4 font-bold shadow-sm">
+            <div>📏 Profil Net Boyu: <span class="text-red-600 text-sm font-black">5 mt 99 cm 6 mm (5996 mm)</span></div>
+            <div>🪓 Testere Payı: <span class="text-red-600 text-sm font-black">Her parça için 3 mm</span></div>
+            <div>🗑️ Hurda Limiti: <span class="text-red-600 text-sm font-black">&lt; 55 cm</span> (Altı Hurda, Üstü Stok)</div>
         </div>
 
         <div id="results-area" class="space-y-6">
@@ -70,19 +70,16 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Kesim Kuralları ve Sabitleri (Milimetre cinsinden)
-        const STOCK_LENGTH_MM = 6000; 
-        const KERF_MM = 3; 
-        const TRIM_START_MM = 2; 
-        const TRIM_END_MM = 2; 
-        const USABLE_STOCK_MM = STOCK_LENGTH_MM - TRIM_START_MM - TRIM_END_MM; // 5996 mm net kalır
-        const SCRAP_LIMIT_CM = 55; 
+        // İstediğiniz Net Ölçü Parametreleri (Milimetre cinsinden)
+        const STOCK_LENGTH_MM = 5996; // 5 metre 99 cm 6 mm net profil boyu
+        const KERF_MM = 3; // Her kesilecek parça için 3 mm testere payı
+        const SCRAP_LIMIT_CM = 55; // 55 cm altı hurda
 
         window.fetchAndOptimize = async function() {
             const orderNo = document.getElementById('search-no').value.padStart(5, '0');
             if(!orderNo) return alert("Lütfen form numarası girin!");
 
-            document.getElementById('results-area').innerHTML = `<div class="py-12 text-center text-indigo-600 font-black animate-pulse text-lg">Firebase'den veriler alınıyor ve hesaplanıyor...</div>`;
+            document.getElementById('results-area').innerHTML = `<div class="py-12 text-center text-indigo-600 font-black animate-pulse text-lg">Veriler hesaplanıyor...</div>`;
 
             try {
                 const [siparisSnap, kesimAyariSnap] = await Promise.all([
@@ -99,15 +96,14 @@
                 const kesimVerisi = kesimAyariSnap.exists() ? 
                     (Array.isArray(kesimAyariSnap.val()) ? kesimAyariSnap.val() : Object.values(kesimAyariSnap.val())) : [];
 
-                // Form üst başlık bilgilerini yazdır
                 document.getElementById('order-no-display').innerText = data.form_bilgileri.form_no;
                 document.getElementById('order-date').innerText = "Tarih: " + (data.form_bilgileri.tarih || "--/--/----");
                 document.getElementById('cust-info').innerText = `MÜŞTERİ: ${data.form_bilgileri.musteri_ad} | ${data.form_bilgileri.musteri_tel}`;
 
-                // Kurallara göre sadece Kasa ve Kanat ölçülerini filtrele ve çıkar
+                // Sadece Kasa ve Kanat ölçülerini Seri bazlı filtrele
                 let cutList = extractCutsFromOrder(data.siparis_icerigi, kesimVerisi);
                 
-                // Ustaya özel sıralı optimizasyonu çalıştır
+                // Optimizasyon ve Görev motorunu çalıştır
                 runUstaOptimization(cutList);
 
             } catch (err) {
@@ -116,14 +112,16 @@
             }
         }
 
-        // --- KESİM.HTML İLE BİREBİR UYUMLU FORMÜL MOTORU + MODEL & RENK FİLTRESİ ---
+        // --- SERİ BAZLI VE FORMÜL UYARLI VERİ ÇEKME MOTORU ---
         function extractCutsFromOrder(siparisIcerigi, kesimGroups) {
             let extractedList = [];
 
             siparisIcerigi.forEach((satir) => {
                 let siparisAdet = parseFloat(satir['Adet'] || satir['adet'] || satir['Miktar'] || 1) || 1;
                 let renk = (satir['Renk'] || satir['renk'] || satir['RENK'] || "Beyaz").trim();
-                let model = (satir['Model'] || satir['model'] || satir['MODEL'] || "Standart").trim();
+                
+                // Model yerine tamamen SERİ parametresine geçildi
+                let seri = (satir['Seri'] || satir['seri'] || satir['SERİ'] || satir['Model'] || satir['model'] || "Standart").trim();
 
                 kesimGroups.forEach(group => {
                     let nihaiSonuc = "-";
@@ -178,13 +176,12 @@
                         else if(group.title.toUpperCase().includes("KANAT")) profType = "Kanat";
 
                         if(profType !== "") {
-                            // Çarpan Kontrolü (En ve Boy için standart 2 adet kesim ihtiyacı)
                             let carpan = (group.title.toUpperCase().includes("EN") || group.title.toUpperCase().includes("BOY")) ? 2 : 1;
                             let kesilecekAdet = siparisAdet * carpan;
 
                             extractedList.push({
                                 color: renk,
-                                model: model,
+                                seri: seri,
                                 type: profType,
                                 lengthCm: nihaiSonuc,
                                 qty: kesilecekAdet
@@ -197,21 +194,20 @@
             return extractedList;
         }
 
-        // --- EN AZ ZAYİATLI VE SIRALI GÖREV ALGORİTMASI ---
+        // --- EN AZ ZAYİATLI DOĞRUSAL SEÇİM ALGORİTMASI ---
         function runUstaOptimization(cutList) {
             const resultsArea = document.getElementById('results-area');
             if (cutList.length === 0) {
-                resultsArea.innerHTML = `<div class="py-12 text-center text-red-500 font-bold text-lg">Bu siparişte kesilecek uygun Kasa veya Kanat ölçüsü üretilemedi!</div>`;
+                resultsArea.innerHTML = `<div class="py-12 text-center text-red-500 font-bold text-lg">Bu siparişte kesilecek uygun Kasa veya Kanat ölçüsü bulunamadı!</div>`;
                 return;
             }
 
-            // Parçaları tekil listeye indirge
             let allPieces = [];
             cutList.forEach(item => {
                 for (let i = 0; i < item.qty; i++) {
                     allPieces.push({
                         color: item.color,
-                        model: item.model,
+                        seri: item.seri,
                         type: item.type,
                         lengthMm: item.lengthCm * 10,
                         originalCm: item.lengthCm
@@ -219,32 +215,29 @@
                 }
             });
 
-            // Gelişmiş Gruplama Anahtarı: RENK + MODEL + PROFİL TİPİ
+            // Gelişmiş Gruplama Anahtarı: RENK + SERİ + PROFİL TİPİ
             const groups = {};
             allPieces.forEach(p => {
-                const key = `${p.color} | ${p.model} | ${p.type}`;
+                const key = `${p.color} | ${p.seri} | ${p.type}`;
                 if (!groups[key]) groups[key] = [];
                 groups[key].push(p);
             });
 
             resultsArea.innerHTML = '';
 
-            // Her bir Profil Grubu İçin Ayrı Tablo Basımı
             for (const [groupName, pieces] of Object.entries(groups)) {
-                
-                // En az zayiat için parçaları büyükten küçüğe diziyoruz (BFD Algoritması)
+                // En az zayiat için büyük parçadan küçüğe doğru dizer (BFD)
                 pieces.sort((a, b) => b.lengthMm - a.lengthMm);
 
                 let stocks = [];
 
                 pieces.forEach(piece => {
-                    const requiredSpace = piece.lengthMm + KERF_MM;
+                    const requiredSpace = piece.lengthMm + KERF_MM; // Her kesilecek parça adedince 3mm testere payı eklenir
                     let bestStock = null;
                     let minLeftover = Infinity;
 
-                    // Mevcut boy profillerden en uygun olanı ara
                     for (let stock of stocks) {
-                        const freeSpace = USABLE_STOCK_MM - stock.usedMm;
+                        const freeSpace = STOCK_LENGTH_MM - stock.usedMm;
                         if (freeSpace >= requiredSpace && freeSpace < minLeftover) {
                             bestStock = stock;
                             minLeftover = freeSpace;
@@ -255,7 +248,6 @@
                         bestStock.pieces.push(piece);
                         bestStock.usedMm += requiredSpace;
                     } else {
-                        // Yeni 6 metrelik boy profil aç
                         stocks.push({
                             id: stocks.length + 1,
                             pieces: [piece],
@@ -268,25 +260,25 @@
             }
         }
 
-        // --- USTAYA ÖZEL DİNAMİK METİN TABLOSU TASARIMI ---
+        // --- USTAYA ÖZEL TAM ANLATIMLI TABLO TASARIMI ---
         function renderUstaTable(groupName, stocks, container) {
-            let [color, model, type] = groupName.split(" | ");
+            let [color, seri, type] = groupName.split(" | ");
             
             let html = `
             <div class="bg-white rounded-xl shadow-md border border-slate-300 overflow-hidden mb-8 page-break-inside-avoid">
                 <div class="bg-slate-800 text-white px-4 py-3 font-black text-sm uppercase flex justify-between items-center border-b border-slate-700">
                     <div>
-                        <span class="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs mr-2 font-bold">${model}</span>
+                        <span class="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs mr-2 font-bold">Seri: ${seri}</span>
                         <span class="text-amber-400">${color}</span> - ${type} Profili
                     </div>
-                    <span class="text-xs bg-slate-700 px-3 py-1 rounded border border-slate-600">Toplam Gerekli: ${stocks.length} Boy (6m)</span>
+                    <span class="text-xs bg-slate-700 px-3 py-1 rounded border border-slate-600">Gerekli: ${stocks.length} Boy</span>
                 </div>
                 <div class="divide-y divide-slate-200">
             `;
 
             stocks.forEach((stock, sIdx) => {
                 
-                // Aynı boydaki ardışık kesimleri grupla (Örn: 3 Adet 160 cm)
+                // Aynı ölçüdeki ardışık kesimleri grupla (Örn: 3 Adet 160 cm)
                 let compressedCuts = [];
                 stock.pieces.forEach(p => {
                     if (compressedCuts.length > 0 && compressedCuts[compressedCuts.length - 1].cm === p.originalCm) {
@@ -303,7 +295,7 @@
                         <div class="bg-slate-700 text-white text-xs font-black px-3 py-1.5 rounded uppercase shadow-sm">
                             PROFİL #${sIdx + 1}
                         </div>
-                        <span class="text-[10px] text-slate-400 font-bold block mt-1 uppercase tracking-wider">Sıfır 6 Metre Profil</span>
+                        <span class="text-[10px] text-slate-400 font-bold block mt-1 uppercase tracking-wider">Sıfır Boy (599.6 cm)</span>
                     </div>
 
                     <div class="flex-1 space-y-2 border-l-4 border-indigo-500 pl-4 w-full">
@@ -311,38 +303,34 @@
                             <tbody>
                 `;
 
-                let currentLeftoverMm = USABLE_STOCK_MM;
-
                 compressedCuts.forEach((cut, cIdx) => {
                     if (cIdx === 0) {
                         // İlk kesim talimatı
                         html += `
                         <tr class="border-b border-slate-100">
-                            <td class="py-1 text-slate-800 font-bold text-sm">
-                                🟩 <span class="text-slate-500 font-medium">Yeni Üründen:</span> 
-                                <span class="bg-slate-100 border px-2 py-0.5 rounded text-indigo-700 text-base font-black">${cut.qty} Adet [ ${cut.cm} cm ]</span> kes.
+                            <td class="py-2 text-slate-800 font-bold text-sm">
+                                🟩 <span class="text-slate-500 font-semibold">1. Yeni ${color} ${type} Profilinden</span> 
+                                <span class="bg-slate-100 border-2 border-slate-300 px-2 py-1 rounded text-indigo-700 text-base font-black">${cut.qty} Adet [ ${cut.cm} cm ]</span> kes. 
+                                <span class="text-indigo-600 ml-1 font-black">(Artanı Yakınında Beklet)</span>
                             </td>
                         </tr>`;
                     } else {
-                        // Kalan artandan devam talimatı
+                        // Bekleyen artandan devam etme talimatı
                         html += `
                         <tr class="border-b border-slate-100">
-                            <td class="py-1 text-slate-800 font-bold text-sm">
-                                🔄 <span class="text-amber-600 font-black">Artanı Yakınında Beklet</span> 
-                                <span class="text-slate-400 font-medium">ve o bekleyen parçadan:</span> 
-                                <span class="bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-amber-800 text-base font-black">${cut.qty} Adet [ ${cut.cm} cm ]</span> daha kes.
+                            <td class="py-2 text-slate-800 font-bold text-sm">
+                                🔄 <span class="text-amber-600 font-black">2. Bekleyen Artan ${color} Profilden</span> 
+                                <span class="bg-amber-50 border-2 border-amber-300 px-2 py-1 rounded text-amber-800 text-base font-black">${cut.qty} Adet [ ${cut.cm} cm ]</span> kes.
                             </td>
                         </tr>`;
                     }
-                    // Kalanı simüle et
-                    currentLeftoverMm -= (cut.cm * 10 * cut.qty) + (KERF_MM * cut.qty);
                 });
 
                 // Son kalan pay hesaplaması
-                let finalLeftoverMm = USABLE_STOCK_MM - stock.usedMm + KERF_MM; 
+                let finalLeftoverMm = STOCK_LENGTH_MM - stock.usedMm; 
                 let finalLeftoverCm = parseFloat((finalLeftoverMm / 10).toFixed(1));
 
-                // Sağ kutudaki nihai stok/hurda kararı
+                // Sağ kutudaki nihai stok/hurda kararı (55cm altı hurda)
                 let decisionBoxHtml = "";
                 if(finalLeftoverCm < SCRAP_LIMIT_CM) {
                     decisionBoxHtml = `
@@ -353,7 +341,7 @@
                 } else {
                     decisionBoxHtml = `
                         <div class="text-[10px] text-emerald-600 font-black uppercase tracking-wider">İşlem Sonu Durum:</div>
-                        <div class="text-emerald-700 text-lg font-black mt-1 uppercase">🟢 STOĞA BIRAK</div>
+                        <div class="text-emerald-700 text-lg font-black mt-1 uppercase"> Green STOĞA BIRAK</div>
                         <div class="text-xs text-emerald-600 font-bold mt-0.5">Kalan Sağlam: ${finalLeftoverCm} cm</div>
                     `;
                 }
