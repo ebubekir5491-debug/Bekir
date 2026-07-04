@@ -3,157 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Akıllı Kesim Optimizasyonu - Ada Sineklik</title>
+    <title>Siparişten Kesim Optimizasyonuna - Ada Sineklik</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
+        @page { size: A4 landscape; margin: 5mm; }
         @media print {
             .no-print { display: none !important; }
-            body { background: white !important; }
+            body { background: white !important; padding: 0 !important; }
+            #print-area { width: 100%; margin: 0; padding: 0; box-shadow: none; }
         }
-        .profile-bar { height: 30px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; display: flex; border: 1px solid #cbd5e1; }
-        .cut-segment { height: 100%; border-right: 2px solid #ef4444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; }
-        .waste-segment { height: 100%; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #64748b; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, #e2e8f0 5px, #e2e8f0 10px); }
+        .profile-bar { height: 32px; background-color: #e2e8f0; border-radius: 4px; overflow: hidden; display: flex; border: 1px solid #cbd5e1; }
+        .cut-segment { height: 100%; border-right: 2px solid #ef4444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px;}
+        .waste-segment { height: 100%; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #64748b; font-weight: bold; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, #cbd5e1 5px, #cbd5e1 10px); }
     </style>
 </head>
 <body class="bg-slate-200 p-4">
 
-    <div class="max-w-6xl mx-auto">
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-6 border-b-4 border-indigo-600 flex justify-between items-center no-print">
-            <div>
-                <h1 class="text-3xl font-black text-slate-800 leading-none">ADA SİNEKLİK</h1>
-                <p class="text-sm font-bold text-slate-500 mt-1">GELİŞMİŞ KESİM OPTİMİZASYONU</p>
-            </div>
-            <div class="text-right text-xs text-slate-500 font-bold">
-                <p>Profil Boyu: <span class="text-slate-800">600 cm</span></p>
-                <p>Testere Payı: <span class="text-slate-800">3 mm</span></p>
-                <p>Baş/Son Temizleme: <span class="text-slate-800">2'şer mm</span></p>
-            </div>
+    <div class="max-w-7xl mx-auto mb-6 no-print bg-white p-4 rounded-xl shadow-lg flex gap-4 items-end border-b-4 border-indigo-600">
+        <div class="flex-1">
+            <label class="block text-xs font-black text-slate-500 mb-1">FORM NUMARASI</label>
+            <input type="text" id="search-no" class="w-full p-3 bg-slate-100 border-2 border-slate-300 rounded-lg font-bold text-xl focus:border-indigo-500 outline-none" placeholder="Örn: 00005">
         </div>
+        <button onclick="fetchAndOptimize()" class="bg-indigo-600 text-white px-8 py-4 rounded-lg font-black hover:bg-indigo-700 transition-all uppercase text-sm">Siparişi Çek & Optimize Et</button>
+        <button onclick="printOptimization()" class="bg-slate-800 text-white px-8 py-4 rounded-lg font-black hover:bg-slate-900 transition-all uppercase text-sm">PDF OLUŞTUR</button>
+    </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-lg mb-6 no-print">
-            <h2 class="text-lg font-black text-slate-800 mb-4 border-b pb-2">1. Kesim Listesi Ekle</h2>
-            <div class="flex gap-4 items-end mb-4">
-                <div class="flex-1">
-                    <label class="block text-xs font-black text-slate-500 mb-1">RENK</label>
-                    <select id="input-color" class="w-full p-2 bg-slate-100 border-2 border-slate-300 rounded font-bold outline-none focus:border-indigo-500">
-                        <option value="Beyaz">Beyaz</option>
-                        <option value="Antrasit">Antrasit</option>
-                        <option value="Altın Meşe">Altın Meşe</option>
-                        <option value="Siyah">Siyah</option>
-                    </select>
-                </div>
-                <div class="flex-1">
-                    <label class="block text-xs font-black text-slate-500 mb-1">PROFİL TÜRÜ</label>
-                    <select id="input-type" class="w-full p-2 bg-slate-100 border-2 border-slate-300 rounded font-bold outline-none focus:border-indigo-500">
-                        <option value="Kasa">Kasa Profili</option>
-                        <option value="Kanat">Kanat Profili</option>
-                    </select>
-                </div>
-                <div class="flex-1">
-                    <label class="block text-xs font-black text-slate-500 mb-1">UZUNLUK (CM)</label>
-                    <input type="number" step="0.1" id="input-length" class="w-full p-2 bg-slate-100 border-2 border-slate-300 rounded font-bold outline-none focus:border-indigo-500" placeholder="Örn: 145.5">
-                </div>
-                <div class="flex-1">
-                    <label class="block text-xs font-black text-slate-500 mb-1">ADET</label>
-                    <input type="number" id="input-qty" value="1" class="w-full p-2 bg-slate-100 border-2 border-slate-300 rounded font-bold outline-none focus:border-indigo-500">
-                </div>
-                <button onclick="addPiece()" class="bg-indigo-600 text-white px-6 py-2 rounded font-black hover:bg-indigo-700 transition-all uppercase">Ekle</button>
+    <div id="print-area" class="max-w-7xl mx-auto bg-white p-6 shadow-2xl rounded-sm min-h-[200mm]">
+        
+        <div class="flex justify-between items-center mb-6 border-b-2 border-slate-800 pb-4">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 leading-none">ADA SİNEKLİK <span class="text-indigo-600 text-xl">| KESİM OPTİMİZASYONU</span></h1>
+                <p id="cust-info" class="text-sm font-bold text-slate-600 mt-2 uppercase">MÜŞTERİ BEKLENİYOR...</p>
             </div>
-
-            <div class="max-h-40 overflow-y-auto border rounded bg-slate-50 p-2 mb-4">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-500 uppercase bg-slate-200">
-                        <tr>
-                            <th class="px-3 py-2">Renk</th>
-                            <th class="px-3 py-2">Tür</th>
-                            <th class="px-3 py-2">Uzunluk</th>
-                            <th class="px-3 py-2">Adet</th>
-                            <th class="px-3 py-2">İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pieces-list" class="font-bold text-slate-700">
-                        </tbody>
-                </table>
-            </div>
-
-            <div class="flex justify-end gap-2">
-                <button onclick="clearList()" class="bg-red-500 text-white px-6 py-3 rounded font-black hover:bg-red-600 transition-all uppercase text-sm">Listeyi Temizle</button>
-                <button onclick="runOptimization()" class="bg-emerald-600 text-white px-8 py-3 rounded font-black hover:bg-emerald-700 transition-all uppercase text-sm shadow-md">En Az Zaiyatla Optimize Et</button>
-                <button onclick="window.print()" class="bg-slate-800 text-white px-8 py-3 rounded font-black hover:bg-slate-900 transition-all uppercase text-sm">Yazdır / PDF</button>
+            <div class="text-right">
+                <p class="text-[10px] font-bold text-slate-400 uppercase">Sipariş No</p>
+                <p id="order-no-display" class="text-3xl font-mono font-black text-red-600 leading-none">-----</p>
+                <div class="text-[10px] text-slate-500 font-bold mt-1">
+                    Boy: 600cm | Testere: 3mm | Fire: 2+2mm
+                </div>
             </div>
         </div>
 
         <div id="results-area" class="space-y-6">
-            </div>
-
+            <div class="py-10 text-center text-slate-400 italic font-medium">Lütfen optimize etmek için bir form numarası girin...</div>
+        </div>
     </div>
 
-    <script>
-        // Tanımlamalar (Milimetre cinsinden)
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Firebase Yapılandırmanız (Değiştirmeden aldım)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Optimizasyon Sabitleri (Milimetre)
         const STOCK_LENGTH_MM = 6000; 
         const KERF_MM = 3; 
         const TRIM_START_MM = 2; 
         const TRIM_END_MM = 2; 
-        
-        // Kullanılabilir net profil uzunluğu
         const USABLE_STOCK_MM = STOCK_LENGTH_MM - TRIM_START_MM - TRIM_END_MM;
 
-        let cutList = [];
+        window.fetchAndOptimize = async function() {
+            const orderNo = document.getElementById('search-no').value.padStart(5, '0');
+            if(!orderNo) return alert("Lütfen form numarası girin!");
 
-        function addPiece() {
-            const color = document.getElementById('input-color').value;
-            const type = document.getElementById('input-type').value;
-            const lengthCm = parseFloat(document.getElementById('input-length').value);
-            const qty = parseInt(document.getElementById('input-qty').value);
+            document.getElementById('results-area').innerHTML = `<div class="py-10 text-center text-indigo-600 font-black animate-pulse">Veriler Çekiliyor ve Hesaplanıyor...</div>`;
 
-            if (!lengthCm || lengthCm <= 0 || !qty || qty <= 0) {
-                alert("Lütfen geçerli bir uzunluk ve adet girin.");
-                return;
+            try {
+                const [siparisSnap, kesimAyariSnap] = await Promise.all([
+                    get(ref(db, `siparisler/${orderNo}`)),
+                    get(ref(db, 'ayarlar/kesim_ayarlari'))
+                ]);
+
+                if(!siparisSnap.exists()) {
+                    document.getElementById('results-area').innerHTML = `<div class="py-10 text-center text-red-500 font-bold">Sipariş bulunamadı!</div>`;
+                    return;
+                }
+
+                const data = siparisSnap.val();
+                const kesimVerisi = kesimAyariSnap.exists() ? 
+                    (Array.isArray(kesimAyariSnap.val()) ? kesimAyariSnap.val() : Object.values(kesimAyariSnap.val())) : [];
+
+                // Müşteri bilgilerini ekrana bas
+                document.getElementById('order-no-display').innerText = data.form_bilgileri.form_no;
+                document.getElementById('cust-info').innerText = `${data.form_bilgileri.musteri_ad} | ${data.form_bilgileri.musteri_tel}`;
+
+                // Akıllı Hesaplamayı Yap ve Kesim Listesini Oluştur
+                let cutList = extractCutsFromOrder(data.siparis_icerigi, kesimVerisi);
+                
+                // Optimizasyonu Çalıştır
+                runOptimization(cutList);
+
+            } catch (err) {
+                alert("Hata: " + err.message);
+                console.error(err);
             }
-
-            // Fireyi önlemek için mantık dışı ölçü kontrolü
-            if ((lengthCm * 10) > USABLE_STOCK_MM) {
-                alert(`Hata: ${lengthCm} cm, tek bir profilin kullanılabilir alanından (${USABLE_STOCK_MM / 10} cm) daha uzun!`);
-                return;
-            }
-
-            cutList.push({ id: Date.now(), color, type, lengthCm, qty });
-            renderInputList();
         }
 
-        function removePiece(id) {
-            cutList = cutList.filter(p => p.id !== id);
-            renderInputList();
-        }
+        // --- KESİM.HTML'DEKİ HESAPLAMA MANTIĞINI BURADA ÇALIŞTIRIYORUZ ---
+        function extractCutsFromOrder(siparisIcerigi, kesimGroups) {
+            let extractedList = [];
 
-        function clearList() {
-            cutList = [];
-            renderInputList();
-            document.getElementById('results-area').innerHTML = '';
-        }
+            siparisIcerigi.forEach((satir) => {
+                // Siparişteki adet bilgisini alıyoruz (Sütun adınız farklıysa burayı güncelleyin)
+                let siparisAdet = parseFloat(satir['Adet'] || satir['adet'] || satir['Miktar'] || 1) || 1;
+                // Profil rengini alıyoruz
+                let renk = satir['Renk'] || satir['renk'] || satir['RENK'] || "Beyaz";
 
-        function renderInputList() {
-            const tbody = document.getElementById('pieces-list');
-            tbody.innerHTML = '';
-            cutList.forEach(p => {
-                tbody.innerHTML += `
-                    <tr class="border-b border-slate-200">
-                        <td class="px-3 py-1">${p.color}</td>
-                        <td class="px-3 py-1">${p.type}</td>
-                        <td class="px-3 py-1">${p.lengthCm} cm</td>
-                        <td class="px-3 py-1">${p.qty}</td>
-                        <td class="px-3 py-1">
-                            <button onclick="removePiece(${p.id})" class="text-red-500 hover:text-red-700 text-xs uppercase">Sil</button>
-                        </td>
-                    </tr>
-                `;
+                kesimGroups.forEach(group => {
+                    let nihaiSonuc = "-";
+                    
+                    if (group.rules && Array.isArray(group.rules)) {
+                        for (let rule of group.rules) {
+                            const hamDeger = satir[rule.condCol];
+                            const siparisDegeri = String(hamDeger || "").toLowerCase().trim();
+                            const arananDeger = String(rule.condVal || "").toLowerCase().trim();
+                            const op = rule.condOp || "=="; 
+
+                            let kosulSaglandi = false;
+                            const sNum = parseFloat(siparisDegeri);
+                            const aNum = parseFloat(arananDeger);
+
+                            if (!rule.condVal) {
+                                kosulSaglandi = true; 
+                            } else if (!isNaN(sNum) && !isNaN(aNum)) {
+                                switch(op) {
+                                    case "==": kosulSaglandi = (sNum === aNum); break;
+                                    case ">":  kosulSaglandi = (sNum > aNum); break;
+                                    case "<":  kosulSaglandi = (sNum < aNum); break;
+                                    case ">=": kosulSaglandi = (sNum >= aNum); break;
+                                    case "<=": kosulSaglandi = (sNum <= aNum); break;
+                                }
+                            } else {
+                                kosulSaglandi = (siparisDegeri === arananDeger);
+                            }
+
+                            // Kural sağlandıysa matematiği yap
+                            if (kosulSaglandi && rule.chain && Array.isArray(rule.chain)) {
+                                let hesap = 0;
+                                rule.chain.forEach((step, stepIdx) => {
+                                    let currentVal = step.type === 'col' ? (parseFloat(satir[step.val]) || 0) : (parseFloat(step.val) || 0);
+                                    if (stepIdx === 0) hesap = currentVal;
+                                    else {
+                                        switch(step.op) {
+                                            case '+': hesap += currentVal; break;
+                                            case '-': hesap -= currentVal; break;
+                                            case '*': hesap *= currentVal; break;
+                                            case '/': hesap = currentVal !== 0 ? hesap / currentVal : 0; break;
+                                        }
+                                    }
+                                });
+
+                                if (hesap !== 0) nihaiSonuc = parseFloat(hesap.toFixed(1));
+                                break; 
+                            }
+                        }
+                    }
+
+                    // Eğer formül geçerli bir ölçü (sayı) çıkardıysa listeye ekle
+                    if(nihaiSonuc !== "-" && typeof nihaiSonuc === 'number' && nihaiSonuc > 0) {
+                        
+                        // Kasa/Kanat Gruplaması: "Kasa En" ve "Kasa Boy" aynı profil grubuna girer
+                        let profType = group.title;
+                        if(group.title.toUpperCase().includes("KASA")) profType = "Kasa Profili";
+                        else if(group.title.toUpperCase().includes("KANAT")) profType = "Kanat Profili";
+                        else if(group.title.toUpperCase().includes("ORTA KAYIT")) profType = "Orta Kayıt Profili";
+
+                        // Çarpan Mantığı: En ve Boy'dan bir pencere için 2'şer tane kesilir.
+                        let carpan = (group.title.toUpperCase().includes("EN") || group.title.toUpperCase().includes("BOY")) ? 2 : 1;
+                        let kesilecekAdet = siparisAdet * carpan;
+
+                        extractedList.push({
+                            color: renk,
+                            type: profType,
+                            lengthCm: nihaiSonuc,
+                            qty: kesilecekAdet,
+                            title: group.title // Parçanın ne olduğunu (Örn: Kasa En) barda yazmak için tutuyoruz
+                        });
+                    }
+                });
             });
+
+            return extractedList;
         }
 
-        function runOptimization() {
-            if (cutList.length === 0) return alert("Optimize edilecek parça yok!");
+        // --- OPTİMİZASYON ALGORİTMASI ---
+        function runOptimization(cutList) {
+            const resultsArea = document.getElementById('results-area');
+            if (cutList.length === 0) {
+                resultsArea.innerHTML = `<div class="py-10 text-center text-red-500 font-bold">Bu siparişte kesilecek uygun ölçü bulunamadı. Kuralları veya siparişi kontrol edin.</div>`;
+                return;
+            }
 
-            // 1. Verileri parçala (Her adet için 1 nesne oluştur ve mm'ye çevir)
             let allPieces = [];
             cutList.forEach(item => {
                 for (let i = 0; i < item.qty; i++) {
@@ -161,12 +211,12 @@
                         color: item.color,
                         type: item.type,
                         lengthMm: item.lengthCm * 10,
-                        originalCm: item.lengthCm
+                        originalCm: item.lengthCm,
+                        title: item.title
                     });
                 }
             });
 
-            // 2. Renk ve Türe göre grupla
             const groups = {};
             allPieces.forEach(p => {
                 const key = `${p.color} - ${p.type}`;
@@ -174,25 +224,20 @@
                 groups[key].push(p);
             });
 
-            const resultsArea = document.getElementById('results-area');
             resultsArea.innerHTML = '';
             let globalWaste = [];
 
-            // 3. Her grubu kendi içinde optimize et (Best Fit Decreasing)
             for (const [groupName, pieces] of Object.entries(groups)) {
-                // Uzunlukları büyükten küçüğe sırala (Optimizasyonun kalbi)
+                // Büyükten küçüğe sırala (BFD Algoritması)
                 pieces.sort((a, b) => b.lengthMm - a.lengthMm);
 
-                let stocks = []; // Kullanılan 6m'lik profiller
+                let stocks = [];
 
                 pieces.forEach(piece => {
-                    // Parça kesildiğinde testere payı kadar ekstra alan tüketir
                     const requiredSpace = piece.lengthMm + KERF_MM;
-                    
                     let bestStock = null;
                     let minLeftover = Infinity;
 
-                    // En uygun (en az boşluk bırakacak) profili bul
                     for (let stock of stocks) {
                         const freeSpace = USABLE_STOCK_MM - stock.usedMm;
                         if (freeSpace >= requiredSpace && freeSpace < minLeftover) {
@@ -205,7 +250,6 @@
                         bestStock.pieces.push(piece);
                         bestStock.usedMm += requiredSpace;
                     } else {
-                        // Mevcut profillere sığmadıysa yeni profil aç
                         stocks.push({
                             id: stocks.length + 1,
                             pieces: [piece],
@@ -214,31 +258,28 @@
                     }
                 });
 
-                // Grubu ekrana çiz
                 renderGroupResult(groupName, stocks, resultsArea, globalWaste);
             }
 
-            // 4. En Son Kalan Zaiyat (Fire) Listesini Çiz
             renderWasteSummary(globalWaste, resultsArea);
         }
 
         function renderGroupResult(groupName, stocks, container, globalWaste) {
-            // Renk kodlaması
             let bgClass = "bg-slate-800";
-            if (groupName.includes("Beyaz")) bgClass = "bg-slate-300 text-slate-800";
+            if (groupName.includes("Beyaz")) bgClass = "bg-slate-300 text-slate-800 border-b-2 border-slate-400";
             if (groupName.includes("Antrasit")) bgClass = "bg-slate-600";
             if (groupName.includes("Altın Meşe")) bgClass = "bg-amber-700";
+            if (groupName.includes("Siyah")) bgClass = "bg-black text-white";
             
             let html = `
-            <div class="bg-white p-4 rounded-xl shadow border border-slate-200">
-                <h3 class="${bgClass} text-white px-4 py-2 rounded-t-lg font-black text-sm uppercase flex justify-between">
+            <div class="bg-white p-1 rounded-xl shadow border border-slate-300 page-break-inside-avoid mb-6">
+                <h3 class="${bgClass} px-4 py-2 rounded-t-lg font-black text-sm uppercase flex justify-between">
                     <span>${groupName}</span>
-                    <span>Kullanılan Profil: ${stocks.length} Adet</span>
+                    <span>Toplam Gerekli: ${stocks.length} Boy Profil</span>
                 </h3>
                 <div class="p-4 space-y-4">`;
 
             stocks.forEach((stock, index) => {
-                // Son parçadan sonra testere payı düşülmeli ama hesaplama kolaylığı için sonda kalan boşluğu buluyoruz
                 let leftoverMm = USABLE_STOCK_MM - stock.usedMm + KERF_MM; 
                 let leftoverCm = (leftoverMm / 10).toFixed(1);
 
@@ -248,33 +289,34 @@
                 }
 
                 html += `
-                    <div class="border border-slate-300 rounded p-3 bg-slate-50">
-                        <div class="flex justify-between text-xs font-bold mb-2 text-slate-600">
+                    <div class="border border-slate-200 rounded p-2 bg-slate-50">
+                        <div class="flex justify-between text-[11px] font-bold mb-1 text-slate-600">
                             <span>Profil #${index + 1}</span>
                             <span class="text-red-600">Kalan Zaiyat: ${leftoverCm} cm</span>
                         </div>
                         <div class="profile-bar w-full">`;
                 
                 stock.pieces.forEach(p => {
-                    // Görsel bar genişliği hesaplama (toplam 6000mm üzerinden yüzdelik)
                     const widthPct = (p.lengthMm / STOCK_LENGTH_MM) * 100;
-                    // Bıçak payı görseli
                     const kerfPct = (KERF_MM / STOCK_LENGTH_MM) * 100;
                     
-                    let pieceBg = groupName.includes("Kasa") ? "bg-indigo-500" : "bg-emerald-500";
+                    let pieceBg = p.type.includes("Kasa") ? "bg-indigo-600" : "bg-emerald-600";
+                    if(p.type.includes("Kayıt")) pieceBg = "bg-cyan-600";
+
+                    // Metin sığmazsa sadece ölçüyü yaz
+                    let barText = widthPct > 8 ? `${p.title}: ${p.originalCm}` : p.originalCm;
 
                     html += `
-                        <div class="cut-segment ${pieceBg}" style="width: ${widthPct}%" title="${p.originalCm} cm">
-                            ${p.originalCm}
+                        <div class="cut-segment ${pieceBg}" style="width: ${widthPct}%" title="${p.title}: ${p.originalCm} cm">
+                            ${barText}
                         </div>
                         <div class="bg-red-500" style="width: ${kerfPct}%;" title="Testere (3mm)"></div>
                     `;
                 });
 
-                // Kalan fireyi görselde göster
                 const wastePct = (leftoverMm / STOCK_LENGTH_MM) * 100;
                 if(wastePct > 0) {
-                    html += `<div class="waste-segment" style="width: ${wastePct}%" title="Zaiyat: ${leftoverCm} cm"></div>`;
+                    html += `<div class="waste-segment" style="width: ${wastePct}%" title="Zaiyat: ${leftoverCm} cm">${leftoverCm}</div>`;
                 }
 
                 html += `</div></div>`;
@@ -285,37 +327,48 @@
         }
 
         function renderWasteSummary(wasteArray, container) {
-            // Sadece 10 cm'den büyük, işe yarar zaiyatları grupla (İsteğe bağlı değiştirilebilir)
             const usableWaste = wasteArray.filter(w => parseFloat(w.cm) > 10);
-            
             if (usableWaste.length === 0) return;
 
-            // Boyutlarına göre grupla
             const counts = {};
             usableWaste.forEach(w => {
-                const key = `${w.color} | ${w.type} | ${w.cm} cm`;
+                const key = `${w.color} | ${w.type} | ${w.cm}`;
                 counts[key] = (counts[key] || 0) + 1;
             });
 
             let html = `
-            <div class="bg-red-50 p-4 rounded-xl shadow border border-red-200 mt-8 page-break-inside-avoid">
-                <h3 class="bg-red-700 text-white px-4 py-2 rounded-t-lg font-black text-sm uppercase">Artan Kullanılabilir Parçalar (Zaiyat Listesi > 10 cm)</h3>
-                <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-red-50 p-2 rounded-xl shadow border border-red-200 mt-8 page-break-inside-avoid">
+                <h3 class="bg-red-700 text-white px-4 py-2 rounded-t-lg font-black text-sm uppercase">Depoya Ayrılacak Artan Parçalar ( > 10 cm )</h3>
+                <div class="p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             `;
 
             for (const [desc, count] of Object.entries(counts)) {
                 let [color, type, size] = desc.split(" | ");
                 html += `
-                    <div class="bg-white border-2 border-red-200 p-3 rounded-lg text-center shadow-sm">
-                        <div class="text-xs text-slate-500 font-bold uppercase">${color} - ${type}</div>
-                        <div class="text-xl font-black text-slate-800 my-1">${size}</div>
-                        <div class="text-sm font-bold text-red-600">${count} Adet</div>
+                    <div class="bg-white border border-red-200 p-2 rounded text-center shadow-sm">
+                        <div class="text-[10px] text-slate-500 font-bold uppercase truncate">${color} <br> ${type}</div>
+                        <div class="text-lg font-black text-slate-800 my-1">${size} cm</div>
+                        <div class="text-xs font-bold text-white bg-red-600 rounded px-2 py-1 inline-block">${count} Adet</div>
                     </div>
                 `;
             }
 
             html += `</div></div>`;
             container.innerHTML += html;
+        }
+
+        window.printOptimization = function() {
+            const no = document.getElementById('order-no-display').innerText;
+            if(no === "-----") return alert("Önce verileri yüklemelisiniz!");
+            const element = document.getElementById('print-area');
+            const opt = {
+                margin: 5,
+                filename: `ADA_KESIM_PLANI_${no}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
         }
     </script>
 </body>
