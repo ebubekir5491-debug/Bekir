@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cari Hesap Takip Paneli</title>
+    <title>Cari Hesap Takip Paneli v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .modal { transition: opacity 0.25s ease; }
@@ -33,7 +33,7 @@
         <!-- ANA İÇERİK: SOL TABLO, SAĞ DETAY PANELİ -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <!-- MÜŞTERİ LİSTESİ (2 KOLON GENİŞLİKTE) -->
+            <!-- MÜŞTERİ LİSTESİ -->
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-md p-6 overflow-hidden">
                 <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-4">👤 Müşteri Cari Bakiyeleri</h2>
                 <div class="overflow-x-auto">
@@ -56,7 +56,7 @@
                 </div>
             </div>
 
-            <!-- DETAY PANELİ (1 KOLON GENİŞLİKTE) -->
+            <!-- DETAY PANELİ -->
             <div class="bg-white rounded-2xl shadow-md p-6 flex flex-col min-h-[400px]">
                 <div id="detail-header">
                     <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">📋 Cari Hareket Detayları</h2>
@@ -64,9 +64,14 @@
                 </div>
                 
                 <div id="detail-container" class="hidden flex-1 flex flex-col justify-between">
-                    <div class="border-b border-slate-100 pb-3 mb-4">
-                        <h3 id="detail-customer-name" class="font-black text-lg text-indigo-600 uppercase">---</h3>
-                        <p id="detail-customer-phone" class="text-xs text-slate-500 font-mono">---</p>
+                    <div class="border-b border-slate-100 pb-3 mb-4 flex justify-between items-start">
+                        <div>
+                            <h3 id="detail-customer-name" class="font-black text-lg text-indigo-600 uppercase">---</h3>
+                            <p id="detail-customer-phone" class="text-xs text-slate-500 font-mono">---</p>
+                        </div>
+                        <button id="btn-delete-customer" class="bg-red-50 hover:bg-red-600 hover:text-white text-red-600 border border-red-200 px-2 py-1 rounded-lg text-[10px] font-black uppercase transition-all">
+                            ❌ SİL
+                        </button>
                     </div>
 
                     <!-- KALEM KALEM LİSTE -->
@@ -152,9 +157,8 @@
     <!-- SCRIPT ENTEGRASYONU -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, set, get, push, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Mevcut projenizin Firebase ayarları
         const firebaseConfig = {
             apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
             authDomain: "adasineklik54-4c11c.firebaseapp.com",
@@ -168,7 +172,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // Global Veri Hafızası
         let globalCustomers = {};
         let globalOrders = {};
         let globalCollections = {};
@@ -177,10 +180,8 @@
             await reloadAllData();
         };
 
-        // --- VERİLERİ YENİLEME VE HESAPLAMA MOTORU ---
         async function reloadAllData() {
             try {
-                // Tüm verileri paralel çek
                 const [custSnap, orderSnap, paySnap] = await Promise.all([
                     get(ref(db, 'musteriler')),
                     get(ref(db, 'siparisler')),
@@ -199,22 +200,19 @@
             }
         }
 
-        // Metin içindeki sayısal veriyi düzgün float tipine çeviren yardımcı fonksiyon
         function parsePrice(val) {
             if (!val) return 0;
             let cleaned = val.toString().replace(' TL', '').trim();
-            cleaned = cleaned.replace(/\./g, '').replace(',', '.'); // Binlik noktaları siler, virgülü noktaya çevirir
+            cleaned = cleaned.replace(/\./g, '').replace(',', '.');
             let num = parseFloat(cleaned);
             return isNaN(num) ? 0 : num;
         }
 
-        // --- CARİ TABLOYU EKRANA BASMA ---
         function renderCariTable() {
             const tbody = document.getElementById('customer-table-body');
             tbody.innerHTML = "";
 
             const customersArray = [];
-
             Object.keys(globalCustomers).forEach(key => {
                 const c = globalCustomers[key];
                 if (c) {
@@ -229,14 +227,12 @@
                 return;
             }
 
-            // Alfabetik Sıralama
             customersArray.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
 
             customersArray.forEach(cust => {
                 let totalDebt = 0;
                 let totalReceived = 0;
 
-                // 1. Siparişlerden Borçları Hesapla
                 Object.keys(globalOrders).forEach(oKey => {
                     const order = globalOrders[oKey];
                     if (order && order.form_bilgileri && order.form_bilgileri.musteri_ad === cust.name) {
@@ -244,7 +240,6 @@
                     }
                 });
 
-                // 2. Tahsilatlardan Alınanları Hesapla
                 Object.keys(globalCollections).forEach(pKey => {
                     const pay = globalCollections[pKey];
                     if (pay && pay.musteri_ad === cust.name) {
@@ -256,7 +251,7 @@
 
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-indigo-50/50 cursor-pointer transition-all transition-colors select-none";
-                tr.onclick = () => showCustomerLedgerDetails(cust.name, cust.phone, totalDebt, totalReceived, remaining);
+                tr.onclick = () => showCustomerLedgerDetails(cust.id, cust.name, cust.phone, totalDebt, totalReceived, remaining);
                 
                 tr.innerHTML = `
                     <td class="p-4 font-bold text-slate-800 uppercase tracking-tight">${cust.name}</td>
@@ -269,21 +264,23 @@
             });
         }
 
-        // --- MÜŞTERİ HAREKET DETAYLARI PANELİ ---
-        function showCustomerLedgerDetails(name, phone, debt, received, remaining) {
-            document.getElementById('detail-header').classList.add('hidden');
+        function showCustomerLedgerDetails(id, name, phone, debt, received, remaining) {
+            document.getElementById('detail-header').className = 'hidden';
             const container = document.getElementById('detail-container');
             container.classList.remove('hidden');
 
             document.getElementById('detail-customer-name').innerText = name;
             document.getElementById('detail-customer-phone').innerText = phone || "Telefon Yok";
+            
+            // Müşteri silme butonunun tıklama olayını dinamik bağla
+            document.getElementById('btn-delete-customer').onclick = () => deleteCustomer(id, name);
 
             const rowBox = document.getElementById('detail-ledger-rows');
             rowBox.innerHTML = "";
 
             let ledgerItems = [];
 
-            // 1. Sipariş Girişlerini Topla (Borç)
+            // Siparişler (Borç)
             Object.keys(globalOrders).forEach(oKey => {
                 const order = globalOrders[oKey];
                 if (order && order.form_bilgileri && order.form_bilgileri.musteri_ad === name) {
@@ -292,54 +289,110 @@
                         title: `Sipariş No: ${order.form_bilgileri.form_no || oKey}`,
                         amount: parsePrice(order.form_bilgileri.toplam_satis_fiyati),
                         date: order.form_bilgileri.tarih || '',
-                        colorClass: 'text-red-600 bg-red-50 border-red-200'
+                        colorClass: 'text-red-600 bg-red-50 border-red-200',
+                        isClickable: false
                     });
                 }
             });
 
-            // 2. Tahsilat Girişlerini Topla (Alınan)
+            // Tahsilatlar (Alınan)
             Object.keys(globalCollections).forEach(pKey => {
                 const pay = globalCollections[pKey];
                 if (pay && pay.musteri_ad === name) {
                     ledgerItems.push({
+                        key: pKey,
                         type: 'ALINAN',
                         title: `Tahsilat: ${pay.note || 'Ödeme Girişi'}`,
                         amount: parseFloat(pay.tutar) || 0,
                         date: pay.tarih || '',
-                        colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                        colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200 cursor-pointer hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all group',
+                        isClickable: true
                     });
                 }
             });
 
-            // Tarihe göre sıralama (En yeni en üstte dursun isterseniz sort işlemini değiştirebilirsiniz)
-            // Biz kronolojik veya geliş sırasına göre basıyoruz.
             if (ledgerItems.length === 0) {
                 rowBox.innerHTML = `<p class="text-center text-slate-400 italic py-4">Bu müşteriye ait henüz bir hesap hareketi bulunmuyor.</p>`;
             } else {
                 ledgerItems.forEach(item => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = `p-3 rounded-xl border flex justify-between items-center ${item.colorClass}`;
-                    itemDiv.innerHTML = `
-                        <div>
-                            <div class="font-bold uppercase">${item.title}</div>
-                            <div class="text-[10px] opacity-70">${item.date}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-white/80 mr-1">${item.type}</span>
-                            <span class="font-black text-sm">${item.amount.toFixed(2)} TL</span>
-                        </div>
-                    `;
+                    
+                    if(item.isClickable) {
+                        itemDiv.setAttribute('title', 'Bu tahsilatı silmek için üzerine tıklayın');
+                        itemDiv.onclick = () => deleteCollection(item.key);
+                        
+                        itemDiv.innerHTML = `
+                            <div>
+                                <div class="font-bold uppercase group-hover:hidden">${item.title}</div>
+                                <div class="font-black uppercase text-red-600 hidden group-hover:block">🗑️ TAHSİLATı SİL?</div>
+                                <div class="text-[10px] opacity-70">${item.date}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-white/80 mr-1 group-hover:bg-red-200">${item.type}</span>
+                                <span class="font-black text-sm">${item.amount.toFixed(2)} TL</span>
+                            </div>
+                        `;
+                    } else {
+                        itemDiv.innerHTML = `
+                            <div>
+                                <div class="font-bold uppercase">${item.title}</div>
+                                <div class="text-[10px] opacity-70">${item.date}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-white/80 mr-1">${item.type}</span>
+                                <span class="font-black text-sm">${item.amount.toFixed(2)} TL</span>
+                            </div>
+                        `;
+                    }
                     rowBox.appendChild(itemDiv);
                 });
             }
 
-            // Alt Toplamları Güncelle
             document.getElementById('detail-total-debt').innerText = debt.toFixed(2) + " TL";
             document.getElementById('detail-total-received').innerText = received.toFixed(2) + " TL";
             document.getElementById('detail-remaining').innerText = remaining.toFixed(2) + " TL";
         }
 
-        // Dropdown Listelerini Güncelleme
+        // --- ŞİFRELİ MÜŞTERİ SİLME FONKSİYONU ---
+        window.deleteCustomer = async function(id, name) {
+            const password = prompt(`"${name}" isimli müşteriyi silmek için güvenlik şifresini giriniz:`);
+            if (password === "7556") {
+                if (confirm(`"${name}" isimli müşteri rehberden silinecektir. Emin misiniz?`)) {
+                    try {
+                        await remove(ref(db, 'musteriler/' + id));
+                        alert("Müşteri başarıyla silindi.");
+                        resetDetailPanel();
+                        await reloadAllData();
+                    } catch(e) { alert("Hata oluştu: " + e.message); }
+                }
+            } else if (password !== null) {
+                alert("Hatalı Şifre! Silme işlemi iptal edildi.");
+            }
+        };
+
+        // --- ŞİFRELİ TAHSİLAT SİLME FONKSİYONU ---
+        window.deleteCollection = async function(key) {
+            const password = prompt("Bu tahsilat kaydını silmek için güvenlik şifresini giriniz:");
+            if (password === "7556") {
+                if (confirm("Seçilen tahsilat kaydı silinecektir. Onaylıyor musunuz?")) {
+                    try {
+                        await remove(ref(db, 'tahsilatlar/' + key));
+                        alert("Tahsilat kaydı başarıyla silindi.");
+                        resetDetailPanel();
+                        await reloadAllData();
+                    } catch(e) { alert("Hata oluştu: " + e.message); }
+                }
+            } else if (password !== null) {
+                alert("Hatalı Şifre! Silme işlemi iptal edildi.");
+            }
+        };
+
+        function resetDetailPanel() {
+            document.getElementById('detail-header').classList.remove('hidden');
+            document.getElementById('detail-container').classList.add('hidden');
+        }
+
         function populateCustomerDropdowns() {
             const selectPay = document.getElementById('modal-pay-customer');
             selectPay.innerHTML = '<option value="">Seçiniz...</option>';
@@ -359,7 +412,6 @@
             });
         }
 
-        // --- YENİ MÜŞTERİ KAYDETME ---
         window.saveNewCustomer = async function() {
             const name = document.getElementById('modal-cust-name').value.trim();
             const phone = document.getElementById('modal-cust-phone').value.trim();
@@ -368,22 +420,16 @@
 
             try {
                 const newRef = push(ref(db, 'musteriler'));
-                await set(newRef, {
-                    ad_soyad: name,
-                    tel: phone
-                });
+                await set(newRef, { ad_soyad: name, tel: phone });
 
                 alert("Müşteri başarıyla kaydedildi.");
                 document.getElementById('modal-cust-name').value = "";
                 document.getElementById('modal-cust-phone').value = "";
                 toggleModal('customer-modal', false);
                 await reloadAllData();
-            } catch(e) {
-                alert("Hata oluştu: " + e.message);
-            }
+            } catch(e) { alert("Hata oluştu: " + e.message); }
         };
 
-        // --- YENİ TAHSİLAT KAYDETME ---
         window.saveCollection = async function() {
             const name = document.getElementById('modal-pay-customer').value;
             const amount = parseFloat(document.getElementById('modal-pay-amount').value);
@@ -393,8 +439,6 @@
             if (isNaN(amount) || amount <= 0) return alert("Lütfen geçerli bir tahsilat tutarı girin!");
 
             try {
-                const newRef = push(ref(db, 'tahsilatars')); // "tahsilatlar" düğümü
-                // Sipariş sayfandaki dil yapısıyla tam uyumlu olsun diye düğüm adını 'tahsilatlar' yapıyoruz
                 await set(push(ref(db, 'tahsilatlar')), {
                     musteri_ad: name,
                     tutar: amount,
@@ -408,12 +452,9 @@
                 document.getElementById('modal-pay-note').value = "";
                 toggleModal('payment-modal', false);
                 await reloadAllData();
-            } catch(e) {
-                alert("Hata oluştu: " + e.message);
-            }
+            } catch(e) { alert("Hata oluştu: " + e.message); }
         };
 
-        // --- MODAL AÇMA / KAPATMA TETİKLEYİCİSİ ---
         window.toggleModal = function(modalId, show) {
             const modal = document.getElementById(modalId);
             const box = modal.querySelector('div');
