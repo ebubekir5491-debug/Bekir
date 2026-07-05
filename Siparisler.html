@@ -11,7 +11,7 @@
         #order-form { width: 210mm; min-height: 297mm; margin: auto; background: white; padding: 10mm; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid black; padding: 4px; word-wrap: break-word; }
-        input, select { border: none !important; outline: none !important; background: transparent; width: 100%; font-family: inherit; font-size: inherit; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        input, select { border: none !important; outline: none !important; background: transparent; width: 100%; font-family: inherit; font-size: inherit; }
         .align-left { text-align: left; }
         .align-center { text-align: center; }
         .align-right { text-align: right; }
@@ -73,13 +73,13 @@
             <div class="grid grid-cols-2 gap-4 mb-6 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-black uppercase text-slate-600">Müşteri:</span>
-                    <select id="customer-name" onchange="handleCustomerSelect(this)" class="border-b border-dotted border-slate-400 font-bold bg-transparent w-full cursor-pointer">
+                    <select id="customer-name" onchange="handleCustomerChange(this)" class="border-b border-dotted border-slate-400 font-bold bg-transparent cursor-pointer">
                         <option value="">Yükleniyor...</option>
                     </select>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-xs font-black uppercase text-slate-600">Tel:</span>
-                    <input type="text" id="customer-phone" readonly class="border-b border-dotted border-slate-400 font-bold bg-transparent text-slate-600" placeholder="Müşteri seçin">
+                    <input type="text" id="customer-phone" readonly class="border-b border-dotted border-slate-400 font-bold text-slate-500" placeholder="Seçildiğinde dolacak">
                 </div>
             </div>
 
@@ -129,8 +129,8 @@
         window.onload = async () => {
             document.getElementById('current-date').innerText = new Date().toLocaleDateString('tr-TR');
             
-            // Müşterileri Firebase'den yükle
-            await loadCustomerList();
+            // İlk olarak müşterileri veritabanından çekip listeye dolduruyoruz
+            await loadCustomersFromDB();
 
             const snap = await get(ref(db, 'ayarlar/form_duzeni'));
             if(snap.exists()) {
@@ -148,56 +148,42 @@
             }
         };
 
-        // --- MÜŞTERİ LİSTESİNİ YÜKLEME ---
-        async function loadCustomerList() {
-            const custSelect = document.getElementById('customer-name');
+        // --- DİNAMİK MÜŞTERİ LİSTESİ YÜKLEME ---
+        async function loadCustomersFromDB() {
+            const selectEl = document.getElementById('customer-name');
             try {
-                const custSnap = await get(ref(db, 'musteriler'));
-                custSelect.innerHTML = '<option value="">Müşteri Seçiniz...</option>';
-                
-                if(custSnap.exists()) {
-                    const customerData = custSnap.val();
-                    let customerList = [];
-                    
-                    Object.keys(customerData).forEach(key => {
-                        const item = customerData[key];
-                        let name = "";
-                        let phone = "";
-                        
-                        if (item && typeof item === 'object') {
-                            name = item.ad_soyad || item.ad || item.isim || item.musteri_ad || "";
-                            phone = item.tel || item.telefon || item.musteri_tel || "";
+                const snap = await get(ref(db, 'musteriler'));
+                selectEl.innerHTML = '<option value="">Müşteri Seçin...</option>';
+                if (snap.exists()) {
+                    const data = snap.val();
+                    Object.keys(data).forEach(key => {
+                        const m = data[key];
+                        if (m) {
+                            const name = m.ad_soyad || m.ad || m.isim || m.musteri_ad || "";
+                            const phone = m.tel || m.telefon || m.musteri_tel || "";
+                            if (name) {
+                                const opt = document.createElement('option');
+                                opt.value = name;
+                                opt.text = name;
+                                opt.setAttribute('data-phone', phone);
+                                selectEl.appendChild(opt);
+                            }
                         }
-                        
-                        if (name) {
-                            customerList.push({ name, phone });
-                        }
-                    });
-                    
-                    // Alfabetik sıralama
-                    customerList.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
-                    
-                    customerList.forEach(c => {
-                        const opt = document.createElement('option');
-                        opt.value = c.name;
-                        opt.innerText = c.name;
-                        opt.setAttribute('data-phone', c.phone);
-                        custSelect.appendChild(opt);
                     });
                 }
             } catch (e) {
-                console.error("Müşteri listesi yüklenirken hata oluştu: ", e);
-                custSelect.innerHTML = '<option value="">Müşteriler Yüklenemedi</option>';
+                console.error("Müşteri listesi alınırken hata oluştu:", e);
+                selectEl.innerHTML = '<option value="">Müşteriler Yüklenemedi</option>';
             }
         }
 
-        // --- MÜŞTERİ SEÇİLDİĞİNDE TETİKLENEN FONKSİYON ---
-        window.handleCustomerSelect = function(el) {
-            const selectedOption = el.options[el.selectedIndex];
-            const phone = selectedOption ? (selectedOption.getAttribute('data-phone') || "") : "";
+        // --- MÜŞTERİ SEÇİLDİĞİNDE TETİKLENEN HAREKET ---
+        window.handleCustomerChange = function(el) {
+            const selectedOpt = el.options[el.selectedIndex];
+            const phone = selectedOpt ? (selectedOpt.getAttribute('data-phone') || "") : "";
             document.getElementById('customer-phone').value = phone;
             saveDraft();
-        }
+        };
 
         window.toggleCostPanel = function() {
             const panel = document.getElementById('cost-sidebar');
@@ -285,23 +271,21 @@
 
             const data = JSON.parse(saved);
             
-            const custSelect = document.getElementById('customer-name');
-            const targetName = data.musteri_ad || "";
-            const targetPhone = data.musteri_tel || "";
-
-            if (targetName) {
-                let optionExists = Array.from(custSelect.options).some(opt => opt.value === targetName);
-                if (!optionExists) {
-                    const newOpt = document.createElement('option');
-                    newOpt.value = targetName;
-                    newOpt.innerText = targetName;
-                    newOpt.setAttribute('data-phone', targetPhone);
-                    custSelect.appendChild(newOpt);
+            // Eğer kaydedilen isim listede yoksa geçici olarak ekle
+            const customerSelect = document.getElementById('customer-name');
+            if (data.musteri_ad) {
+                let exists = Array.from(customerSelect.options).some(opt => opt.value === data.musteri_ad);
+                if (!exists) {
+                    const opt = document.createElement('option');
+                    opt.value = data.musteri_ad;
+                    opt.text = data.musteri_ad;
+                    opt.setAttribute('data-phone', data.musteri_tel || "");
+                    customerSelect.appendChild(opt);
                 }
-                custSelect.value = targetName;
+                customerSelect.value = data.musteri_ad;
             }
 
-            document.getElementById('customer-phone').value = targetPhone;
+            document.getElementById('customer-phone').value = data.musteri_tel || "";
             document.getElementById('grand-total-sale').value = data.toplam_satis || "";
 
             const body = document.getElementById('table-body');
@@ -416,21 +400,21 @@
                 
                 document.getElementById('edit-mode-badge').classList.remove('hidden');
                 document.getElementById('form-number').innerText = no;
-                
-                const custSelect = document.getElementById('customer-name');
+
+                // Veritabanından gelen müşteri listede yoksa geçici ekle ve seç
+                const customerSelect = document.getElementById('customer-name');
                 const targetName = data.form_bilgileri.musteri_ad || "";
                 const targetPhone = data.form_bilgileri.musteri_tel || "";
-
                 if (targetName) {
-                    let optionExists = Array.from(custSelect.options).some(opt => opt.value === targetName);
-                    if (!optionExists) {
-                        const newOpt = document.createElement('option');
-                        newOpt.value = targetName;
-                        newOpt.innerText = targetName;
-                        newOpt.setAttribute('data-phone', targetPhone);
-                        custSelect.appendChild(newOpt);
+                    let exists = Array.from(customerSelect.options).some(opt => opt.value === targetName);
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = targetName;
+                        opt.text = targetName;
+                        opt.setAttribute('data-phone', targetPhone);
+                        customerSelect.appendChild(opt);
                     }
-                    custSelect.value = targetName;
+                    customerSelect.value = targetName;
                 }
 
                 document.getElementById('customer-phone').value = targetPhone;
