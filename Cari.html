@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cari Hesap Takip Paneli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- ÜST PANEL / BUTONLAR -->
+        <div class="bg-white p-6 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-4 border-b-4 border-indigo-600">
+            <div>
+                <h1 class="text-2xl font-black tracking-tight text-slate-800 uppercase">📊 CARİ HESAP TAKİP PANELİ</h1>
+                <p class="text-xs text-slate-500 font-medium">Müşteri bakiyeleri, sipariş borçları ve tahsilat geçmişi</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="toggleModal('customer-modal', true)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2 uppercase">
+                    👤 Müşteri Ekle
+                </button>
+                <button onclick="toggleModal('payment-modal', true)" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-md transition-all flex items-center gap-2 uppercase">
+                    💰 Tahsilat Yap
+                </button>
+            </div>
+        </div>
+
+        <!-- ANA İÇERİK: SOL TABLO, SAĞ DETAY PANELİ -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- MÜŞTERİ LİSTESİ (2 KOLON GENİŞLİKTE) -->
+            <div class="lg:col-span-2 bg-white rounded-2xl shadow-md p-6 overflow-hidden">
+                <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-4">👤 Müşteri Cari Bakiyeleri</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-xs font-bold uppercase border-b border-slate-200">
+                                <th class="p-4">Müşteri Adı Soyadı</th>
+                                <th class="p-4">Telefon</th>
+                                <th class="p-4 text-right">Toplam Borç</th>
+                                <th class="p-4 text-right">Toplam Alınan</th>
+                                <th class="p-4 text-right">Kalan Bakiye</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customer-table-body" class="text-sm divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="p-4 text-center text-slate-400 italic">Veriler yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- DETAY PANELİ (1 KOLON GENİŞLİKTE) -->
+            <div class="bg-white rounded-2xl shadow-md p-6 flex flex-col min-h-[400px]">
+                <div id="detail-header">
+                    <h2 class="text-sm font-black text-slate-700 uppercase tracking-wider mb-2">📋 Cari Hareket Detayları</h2>
+                    <p class="text-xs text-slate-400 italic mb-4">Hareket detaylarını görmek için soldan bir müşteriye tıklayın.</p>
+                </div>
+                
+                <div id="detail-container" class="hidden flex-1 flex flex-col justify-between">
+                    <div class="border-b border-slate-100 pb-3 mb-4">
+                        <h3 id="detail-customer-name" class="font-black text-lg text-indigo-600 uppercase">---</h3>
+                        <p id="detail-customer-phone" class="text-xs text-slate-500 font-mono">---</p>
+                    </div>
+
+                    <!-- KALEM KALEM LİSTE -->
+                    <div class="flex-1 overflow-y-auto max-h-[350px] space-y-2 pr-2 text-xs" id="detail-ledger-rows">
+                        <!-- Dinamik hareketler buraya gelecek -->
+                    </div>
+
+                    <!-- SEÇİLİ MÜŞTERİ ÖZET BAKIYESİ -->
+                    <div class="border-t border-slate-200 pt-4 mt-4 space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-500">
+                            <span>TOPLAM BORÇ:</span>
+                            <span id="detail-total-debt">0.00 TL</span>
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-emerald-600">
+                            <span>TOPLAM ALINAN:</span>
+                            <span id="detail-total-received">0.00 TL</span>
+                        </div>
+                        <div class="flex justify-between text-sm font-black text-red-600 border-t border-dotted border-slate-200 pt-2">
+                            <span>KALAN BAKİYE:</span>
+                            <span id="detail-remaining">0.00 TL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MÜŞTERİ EKLEME PENCERESİ (MODAL) -->
+    <div id="customer-modal" class="modal opacity-0 pointer-events-none fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 transform scale-95 transition-transform duration-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-black text-slate-800 uppercase tracking-tight">👤 Yeni Müşteri Kaydı</h3>
+                <button onclick="toggleModal('customer-modal', false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Müşteri Adı Soyadı</label>
+                    <input type="text" id="modal-cust-name" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 font-semibold text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="Örn: Ahmet Yılmaz">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Telefon Numarası</label>
+                    <input type="text" id="modal-cust-phone" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 font-semibold text-slate-800 focus:outline-none focus:border-indigo-500" placeholder="05XX XXX XX XX">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="toggleModal('customer-modal', false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl uppercase text-xs">Vazgeç</button>
+                <button onclick="saveNewCustomer()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl uppercase text-xs shadow-md">Müşteriyi Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAHSİLAT YAPMA PENCERESİ (MODAL) -->
+    <div id="payment-modal" class="modal opacity-0 pointer-events-none fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 transform scale-95 transition-transform duration-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-black text-slate-800 uppercase tracking-tight">💰 Yeni Tahsilat Girişi</h3>
+                <button onclick="toggleModal('payment-modal', false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Müşteri Seçin</label>
+                    <select id="modal-pay-customer" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 font-semibold text-slate-800 focus:outline-none focus:border-emerald-500 bg-white">
+                        <option value="">Seçiniz...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Alınan Tutar (TL)</label>
+                    <input type="number" step="0.01" id="modal-pay-amount" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 font-semibold text-slate-800 focus:outline-none focus:border-emerald-500" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Açıklama / Not</label>
+                    <input type="text" id="modal-pay-note" class="w-full border border-slate-300 rounded-xl px-3 py-2.5 font-semibold text-slate-800 focus:outline-none focus:border-emerald-500" placeholder="Örn: Nakit, Havale, Elden alınan nakit">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="toggleModal('payment-modal', false)" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl uppercase text-xs">İptal</button>
+                <button onclick="saveCollection()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl uppercase text-xs shadow-md">Tahsilatı Kaydet</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT ENTEGRASYONU -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Mevcut projenizin Firebase ayarları
+        const firebaseConfig = {
+            apiKey: "AIzaSyAVUGH6f9XgwY2Izi2PG0mUW_2hoUW_Ywc",
+            authDomain: "adasineklik54-4c11c.firebaseapp.com",
+            databaseURL: "https://adasineklik54-4c11c-default-rtdb.firebaseio.com",
+            projectId: "adasineklik54-4c11c",
+            storageBucket: "adasineklik54-4c11c.firebasestorage.app",
+            messagingSenderId: "416407042534",
+            appId: "1:416407042534:web:8105a2ac5f87477eff7e27"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Global Veri Hafızası
+        let globalCustomers = {};
+        let globalOrders = {};
+        let globalCollections = {};
+
+        window.onload = async () => {
+            await reloadAllData();
+        };
+
+        // --- VERİLERİ YENİLEME VE HESAPLAMA MOTORU ---
+        async function reloadAllData() {
+            try {
+                // Tüm verileri paralel çek
+                const [custSnap, orderSnap, paySnap] = await Promise.all([
+                    get(ref(db, 'musteriler')),
+                    get(ref(db, 'siparisler')),
+                    get(ref(db, 'tahsilatlar'))
+                ]);
+
+                globalCustomers = custSnap.exists() ? custSnap.val() : {};
+                globalOrders = orderSnap.exists() ? orderSnap.val() : {};
+                globalCollections = paySnap.exists() ? paySnap.val() : {};
+
+                renderCariTable();
+                populateCustomerDropdowns();
+            } catch (e) {
+                console.error("Veri yükleme hatası:", e);
+                alert("Veritabanı bağlantısında hata oluştu!");
+            }
+        }
+
+        // Metin içindeki sayısal veriyi düzgün float tipine çeviren yardımcı fonksiyon
+        function parsePrice(val) {
+            if (!val) return 0;
+            let cleaned = val.toString().replace(' TL', '').trim();
+            cleaned = cleaned.replace(/\./g, '').replace(',', '.'); // Binlik noktaları siler, virgülü noktaya çevirir
+            let num = parseFloat(cleaned);
+            return isNaN(num) ? 0 : num;
+        }
+
+        // --- CARİ TABLOYU EKRANA BASMA ---
+        function renderCariTable() {
+            const tbody = document.getElementById('customer-table-body');
+            tbody.innerHTML = "";
+
+            const customersArray = [];
+
+            Object.keys(globalCustomers).forEach(key => {
+                const c = globalCustomers[key];
+                if (c) {
+                    const name = c.ad_soyad || c.ad || c.isim || c.musteri_ad || "";
+                    const phone = c.tel || c.telefon || c.musteri_tel || "";
+                    if (name) customersArray.push({ id: key, name, phone });
+                }
+            });
+
+            if (customersArray.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">Kayıtlı müşteri bulunamadı.</td></tr>`;
+                return;
+            }
+
+            // Alfabetik Sıralama
+            customersArray.sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+
+            customersArray.forEach(cust => {
+                let totalDebt = 0;
+                let totalReceived = 0;
+
+                // 1. Siparişlerden Borçları Hesapla
+                Object.keys(globalOrders).forEach(oKey => {
+                    const order = globalOrders[oKey];
+                    if (order && order.form_bilgileri && order.form_bilgileri.musteri_ad === cust.name) {
+                        totalDebt += parsePrice(order.form_bilgileri.toplam_satis_fiyati);
+                    }
+                });
+
+                // 2. Tahsilatlardan Alınanları Hesapla
+                Object.keys(globalCollections).forEach(pKey => {
+                    const pay = globalCollections[pKey];
+                    if (pay && pay.musteri_ad === cust.name) {
+                        totalReceived += parseFloat(pay.tutar) || 0;
+                    }
+                });
+
+                let remaining = totalDebt - totalReceived;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-indigo-50/50 cursor-pointer transition-all transition-colors select-none";
+                tr.onclick = () => showCustomerLedgerDetails(cust.name, cust.phone, totalDebt, totalReceived, remaining);
+                
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-slate-800 uppercase tracking-tight">${cust.name}</td>
+                    <td class="p-4 font-mono text-slate-500 text-xs">${cust.phone || '-'}</td>
+                    <td class="p-4 text-right font-semibold text-slate-700">${totalDebt.toFixed(2)} TL</td>
+                    <td class="p-4 text-right font-semibold text-emerald-600">${totalReceived.toFixed(2)} TL</td>
+                    <td class="p-4 text-right font-black ${remaining > 0 ? 'text-red-600' : 'text-slate-700'}">${remaining.toFixed(2)} TL</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- MÜŞTERİ HAREKET DETAYLARI PANELİ ---
+        function showCustomerLedgerDetails(name, phone, debt, received, remaining) {
+            document.getElementById('detail-header').classList.add('hidden');
+            const container = document.getElementById('detail-container');
+            container.classList.remove('hidden');
+
+            document.getElementById('detail-customer-name').innerText = name;
+            document.getElementById('detail-customer-phone').innerText = phone || "Telefon Yok";
+
+            const rowBox = document.getElementById('detail-ledger-rows');
+            rowBox.innerHTML = "";
+
+            let ledgerItems = [];
+
+            // 1. Sipariş Girişlerini Topla (Borç)
+            Object.keys(globalOrders).forEach(oKey => {
+                const order = globalOrders[oKey];
+                if (order && order.form_bilgileri && order.form_bilgileri.musteri_ad === name) {
+                    ledgerItems.push({
+                        type: 'BORÇ',
+                        title: `Sipariş No: ${order.form_bilgileri.form_no || oKey}`,
+                        amount: parsePrice(order.form_bilgileri.toplam_satis_fiyati),
+                        date: order.form_bilgileri.tarih || '',
+                        colorClass: 'text-red-600 bg-red-50 border-red-200'
+                    });
+                }
+            });
+
+            // 2. Tahsilat Girişlerini Topla (Alınan)
+            Object.keys(globalCollections).forEach(pKey => {
+                const pay = globalCollections[pKey];
+                if (pay && pay.musteri_ad === name) {
+                    ledgerItems.push({
+                        type: 'ALINAN',
+                        title: `Tahsilat: ${pay.note || 'Ödeme Girişi'}`,
+                        amount: parseFloat(pay.tutar) || 0,
+                        date: pay.tarih || '',
+                        colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    });
+                }
+            });
+
+            // Tarihe göre sıralama (En yeni en üstte dursun isterseniz sort işlemini değiştirebilirsiniz)
+            // Biz kronolojik veya geliş sırasına göre basıyoruz.
+            if (ledgerItems.length === 0) {
+                rowBox.innerHTML = `<p class="text-center text-slate-400 italic py-4">Bu müşteriye ait henüz bir hesap hareketi bulunmuyor.</p>`;
+            } else {
+                ledgerItems.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `p-3 rounded-xl border flex justify-between items-center ${item.colorClass}`;
+                    itemDiv.innerHTML = `
+                        <div>
+                            <div class="font-bold uppercase">${item.title}</div>
+                            <div class="text-[10px] opacity-70">${item.date}</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-white/80 mr-1">${item.type}</span>
+                            <span class="font-black text-sm">${item.amount.toFixed(2)} TL</span>
+                        </div>
+                    `;
+                    rowBox.appendChild(itemDiv);
+                });
+            }
+
+            // Alt Toplamları Güncelle
+            document.getElementById('detail-total-debt').innerText = debt.toFixed(2) + " TL";
+            document.getElementById('detail-total-received').innerText = received.toFixed(2) + " TL";
+            document.getElementById('detail-remaining').innerText = remaining.toFixed(2) + " TL";
+        }
+
+        // Dropdown Listelerini Güncelleme
+        function populateCustomerDropdowns() {
+            const selectPay = document.getElementById('modal-pay-customer');
+            selectPay.innerHTML = '<option value="">Seçiniz...</option>';
+
+            const list = [];
+            Object.keys(globalCustomers).forEach(key => {
+                const name = globalCustomers[key].ad_soyad || globalCustomers[key].ad || "";
+                if(name) list.push(name);
+            });
+            list.sort((a,b) => a.localeCompare(b, 'tr'));
+
+            list.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                selectPay.appendChild(opt);
+            });
+        }
+
+        // --- YENİ MÜŞTERİ KAYDETME ---
+        window.saveNewCustomer = async function() {
+            const name = document.getElementById('modal-cust-name').value.trim();
+            const phone = document.getElementById('modal-cust-phone').value.trim();
+
+            if (!name) return alert("Lütfen müşteri adını ve soyadını girin!");
+
+            try {
+                const newRef = push(ref(db, 'musteriler'));
+                await set(newRef, {
+                    ad_soyad: name,
+                    tel: phone
+                });
+
+                alert("Müşteri başarıyla kaydedildi.");
+                document.getElementById('modal-cust-name').value = "";
+                document.getElementById('modal-cust-phone').value = "";
+                toggleModal('customer-modal', false);
+                await reloadAllData();
+            } catch(e) {
+                alert("Hata oluştu: " + e.message);
+            }
+        };
+
+        // --- YENİ TAHSİLAT KAYDETME ---
+        window.saveCollection = async function() {
+            const name = document.getElementById('modal-pay-customer').value;
+            const amount = parseFloat(document.getElementById('modal-pay-amount').value);
+            const note = document.getElementById('modal-pay-note').value.trim();
+
+            if (!name) return alert("Lütfen listeden bir müşteri seçin!");
+            if (isNaN(amount) || amount <= 0) return alert("Lütfen geçerli bir tahsilat tutarı girin!");
+
+            try {
+                const newRef = push(ref(db, 'tahsilatars')); // "tahsilatlar" düğümü
+                // Sipariş sayfandaki dil yapısıyla tam uyumlu olsun diye düğüm adını 'tahsilatlar' yapıyoruz
+                await set(push(ref(db, 'tahsilatlar')), {
+                    musteri_ad: name,
+                    tutar: amount,
+                    note: note || "Tahsilat Ödemesi",
+                    tarih: new Date().toLocaleString('tr-TR')
+                });
+
+                alert("Tahsilat kaydı başarıyla eklendi.");
+                document.getElementById('modal-pay-customer').value = "";
+                document.getElementById('modal-pay-amount').value = "";
+                document.getElementById('modal-pay-note').value = "";
+                toggleModal('payment-modal', false);
+                await reloadAllData();
+            } catch(e) {
+                alert("Hata oluştu: " + e.message);
+            }
+        };
+
+        // --- MODAL AÇMA / KAPATMA TETİKLEYİCİSİ ---
+        window.toggleModal = function(modalId, show) {
+            const modal = document.getElementById(modalId);
+            const box = modal.querySelector('div');
+            if (show) {
+                modal.classList.remove('pointer-events-none');
+                modal.classList.remove('opacity-0');
+                box.classList.remove('scale-95');
+                box.classList.add('scale-100');
+            } else {
+                modal.classList.add('pointer-events-none');
+                modal.classList.add('opacity-0');
+                box.classList.remove('scale-100');
+                box.classList.add('scale-95');
+            }
+        };
+    </script>
+</body>
+</html>
